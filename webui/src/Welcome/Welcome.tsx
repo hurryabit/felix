@@ -1,7 +1,11 @@
 import { Title, Text, Anchor } from "@mantine/core";
 import * as classes from "./Welcome.css";
 
+import * as wasm from "felix-wasm-bridge";
+
 export function Welcome() {
+  const point = wasm.my_point();
+  console.log("WebAssemly's point:", point);
   return (
     <>
       <Title className={classes.title} ta="center" mt={100}>
@@ -22,6 +26,8 @@ export function Welcome() {
         <Anchor href="https://hurryabit.github.io/rufus">
           rufus
         </Anchor>.
+        <br />
+        Also, WebAssembly wants to make a point: {JSON.stringify(point)}.
       </Text>
     </>
   );

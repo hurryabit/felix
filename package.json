@@ -1,7 +1,8 @@
 {
     "scripts": {
-        "dev": "pnpm run --dir=webui dev",
-        "build": "pnpm run --dir=webui build",
+        "dev": "pnpm run build-wasm && pnpm run --dir=webui dev",
+        "build": "pnpm run build-wasm && pnpm run --dir=webui build",
+        "build-wasm": "wasm-pack build wasm-bridge",
         "lint": "pnpm run --dir=webui lint",
         "preview": "pnpm run --dir=webui preview",
         "upload": "pnpm run --dir=webui upload"

@@ -1,0 +1,18 @@
+[package]
+name = "felix-wasm-bridge"
+version = "0.0.1"
+authors = ["Martin Huschenbett <martin.huschenbett@posteo.me>"]
+edition = "2021"
+publish = false
+description = "felix' WebAssembly bridge between Rust and JavaScript"
+homepage = "https://hurryabit.github.io/felix"
+repository = "https://github.com/hurryabit/felix.git"
+license = "Apache 2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tsify = { version = "0.4.5", features = ["js"] }
+wasm-bindgen = "0.2.93"
