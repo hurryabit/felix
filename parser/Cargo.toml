@@ -1,0 +1,17 @@
+[package]
+name = "felix-parser"
+version = "0.0.1"
+authors = ["Martin Huschenbett <martin.huschenbett@posteo.me>"]
+edition = "2021"
+publish = false
+description = "felix' parser"
+homepage = "https://hurryabit.github.io/felix"
+repository = "https://github.com/hurryabit/felix.git"
+license = "Apache 2.0"
+
+[dependencies]
+logos = "0.14.2"
+rowan = { version = "0.15.16", features = ["serde1"] }
+
+[dev-dependencies]
+insta = { version = "1.40.0", features = ["ron"] }
