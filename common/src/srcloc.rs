@@ -1,6 +1,10 @@
 use std::fmt;
 
-#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd)]
+use serde::Serialize;
+use tsify::Tsify;
+
+#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[tsify(into_wasm_abi)]
 pub struct SrcLoc {
     pub line: u32,
     pub column: u32,

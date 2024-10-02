@@ -1,0 +1,20 @@
+use serde::Serialize;
+use tsify::Tsify;
+
+use crate::SrcLoc;
+
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[tsify(into_wasm_abi)]
+pub enum Severity {
+    Error,
+}
+
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[tsify(into_wasm_abi)]
+pub struct Problem {
+    pub start: SrcLoc,
+    pub end: SrcLoc,
+    pub severity: Severity,
+    pub source: &'static str,
+    pub message: String,
+}

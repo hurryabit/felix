@@ -1,10 +1,16 @@
+import { MouseEvent, useCallback } from "react";
 import { Box, List, ScrollArea } from "@mantine/core";
+import { IconCircleX } from "@tabler/icons-react";
+
+import { Problem } from "felix-wasm-bridge";
 
 import * as classes from "./Problems.css";
-import { IconCircleX } from "@tabler/icons-react";
-import { MouseEvent, useCallback } from "react";
 
-export default function ProblemsPane() {
+type Props = {
+    problems: Problem[];
+}
+
+export default function ProblemsPane({problems}: Props) {
     const onProblemClick = useCallback(function onClick(event: MouseEvent<HTMLLIElement>) {
         alert(`Clicked on problem ${event.currentTarget.dataset.index}.`);
     }, []);
@@ -16,9 +22,10 @@ export default function ProblemsPane() {
                 center
                 icon={<IconCircleX className={classes.problemIcon} />}
             >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (i) {
+                {problems.map(function ({start, message, source}, i) {
+                    const { line, column } = start;
                     return <List.Item key={i} data-index={i} onClick={onProblemClick}>
-                        Found FOO{i}, expected BAR{i} <span className={classes.locAnn}>[Ln {i}, Col 1]</span>
+                        {message} <span className={classes.locAnn}>— {source} [Ln {line}, Col {column}]</span>
                     </List.Item>
                 })}
             </List>

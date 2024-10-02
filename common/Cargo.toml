@@ -8,3 +8,8 @@ publish.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
+
+[dependencies]
+serde.workspace = true
+tsify.workspace = true
+wasm-bindgen.workspace = true
