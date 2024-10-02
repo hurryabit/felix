@@ -6,6 +6,7 @@ import "ace-builds/src-noconflict/mode-ocaml";
 import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
+import Problems from "../Problems/Problems";
 import SyntaxTreeView from "../SyntaxTree/SyntaxTree";
 
 import { vars } from "../theme";
@@ -100,6 +101,8 @@ export default function Main() {
                 </Tabs>
             </div>
         </div>
-        <div className={classes.problemsPane}></div>
+        <div className={classes.problemsPane}>
+            <Problems />
+        </div>
     </div>
 }
