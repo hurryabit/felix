@@ -19,8 +19,10 @@
     "@mantine/hooks": "7.13.0",
     "@mantine/vanilla-extract": "7.13.0",
     "@vanilla-extract/css": "^1.15.3",
+    "ace-builds": "^1.36.2",
     "felix-wasm-bridge": "workspace:*",
     "react": "^18.3.1",
+    "react-ace": "^12.0.0",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
