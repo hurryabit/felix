@@ -102,19 +102,7 @@ impl<'a> Parser<'a> {
     }
 
     fn let_var(&mut self) {
-        let mut parser = self.with_node(LET_VAR);
-        let mut token = parser.peek();
-        if token != ID_LOWER {
-            parser.error(token, ID_LOWER.as_set(), "LET_VAR");
-            while token != ID_LOWER && token != ASSIGN {
-                parser.consume(token);
-                token = parser.peek();
-            }
-            if token != ID_LOWER {
-                return;
-            }
-        }
-        parser.consume(ID_LOWER);
+        self.with_node(LET_VAR).find_and_consume(ID_LOWER, "LET_VAR");
     }
 
     fn if_expr(&mut self) {

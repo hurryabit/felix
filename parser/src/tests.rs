@@ -217,6 +217,7 @@ fn let_no_var() {
         #LET@0..3 "let"
         LET_MOD@3..10
         LET_VAR@10..10
+          ERROR@10..10
         #ASSIGN@10..11 "="
         BINOP_EXPR@12..18
           LIT_EXPR@12..13
@@ -499,6 +500,35 @@ fn arith_simple() {
           #NAT_LIT@12..13 "4"
     "##);
     assert_snapshot!(dump_errors(&result.errors), @r"");
+}
+
+// #[should_panic(expected = "consume end-of-file")]
+#[test]
+fn let_no_nothing() {
+    let result = parse(
+        r#"
+        let
+        "#,
+    );
+    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
+    ROOT@0..21
+      LET_EXPR@9..21
+        #LET@9..12 "let"
+        LET_MOD@12..21
+        LET_VAR@21..21
+          ERROR@21..21
+        ERROR@21..21
+        ERROR@21..21
+        ERROR@21..21
+        ERROR@21..21
+    "##);
+    assert_snapshot!(dump_errors(&result.errors), @r#"
+    ParseError { span: 21..21, found: EOF, expected: {ID_LOWER}, rule: "LET_VAR" }
+    ParseError { span: 21..21, found: EOF, expected: {ASSIGN}, rule: "LET_EXPR" }
+    ParseError { span: 21..21, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
+    ParseError { span: 21..21, found: EOF, expected: {IN}, rule: "LET_EXPR" }
+    ParseError { span: 21..21, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
+    "#);
 }
 
 #[should_panic(expected = "not yet implemented")]
