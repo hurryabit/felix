@@ -1,4 +1,8 @@
+import { Tabs } from "@mantine/core";
 import AceEditor from "react-ace";
+import { useState } from "react";
+
+
 import "ace-builds/src-noconflict/mode-ocaml";
 import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
@@ -7,9 +11,11 @@ import * as classes from "./Main.css";
 import { rem } from "@mantine/core";
 
 export default function Main() {
+    const [activeTab, setActiveTab] = useState<string | null>("parser")
+
     return <div className={classes.mainColumn}>
         <div className={classes.editorOutputRow}>
-            <div className={classes.editorPane}>
+            <div className={classes.editorPanel}>
                 <AceEditor
                     name="editor"
                     value={"let f = fun x -> x + x\nin f 2\n"}
@@ -30,7 +36,18 @@ export default function Main() {
                     }}
                 />
             </div>
-            <div className={classes.outputPane}></div>
+            <div className={classes.outputPanel}>
+                <Tabs className={classes.outputTabs} value={activeTab} onChange={setActiveTab} inverted>
+                    <Tabs.Panel value="parser" flex={1}>Panel for the concrete syntax tree produced by the parser.</Tabs.Panel>
+                    <Tabs.Panel value="checker" flex={1}>Panel for the intermediate representation produced by the type checker.</Tabs.Panel>
+                    <Tabs.Panel value="interpreter" flex={1}>Panel for the value produced by the interpreter.</Tabs.Panel>
+                    <Tabs.List>
+                        <Tabs.Tab value="parser">Parser</Tabs.Tab>
+                        <Tabs.Tab value="checker">Type checker</Tabs.Tab>
+                        <Tabs.Tab value="interpreter">Interpreter</Tabs.Tab>
+                    </Tabs.List>
+                </Tabs>
+            </div>
         </div>
         <div className={classes.problemsPane}></div>
     </div>

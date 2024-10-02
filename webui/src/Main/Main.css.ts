@@ -10,19 +10,25 @@ export const mainColumn = style({
 export const editorOutputRow = style({
     display: "flex",
     flexDirection: "row",
-    flexGrow: "1",
+    flex: 1,
 });
 
-export const editorPane = style({
+export const editorPanel = style({
     display: "block",
-    flexGrow: 1,
+    flex: 1,
 });
 
-export const outputPane = style({
+export const outputPanel = style({
     display: "block",
-    flexGrow: 1,
+    flex: 1,
     borderLeft: "1px solid var(--app-shell-border-color)",
 });
+
+export const outputTabs = style({
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+})
 
 export const problemsPane = style({
     display: "block",
