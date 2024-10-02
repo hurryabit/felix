@@ -1,13 +1,13 @@
 [package]
 name = "felix-parser"
-version = "0.0.1"
-authors = ["Martin Huschenbett <martin.huschenbett@posteo.me>"]
-edition = "2021"
-publish = false
 description = "felix' parser"
-homepage = "https://hurryabit.github.io/felix"
-repository = "https://github.com/hurryabit/felix.git"
-license = "Apache 2.0"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+publish.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 
 [dependencies]
 logos = "0.14.2"

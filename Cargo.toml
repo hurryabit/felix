@@ -1,5 +1,15 @@
 [workspace]
 members = [
+    "parser",
     "wasm-bridge",
 ]
 resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+authors = ["Martin Huschenbett <martin.huschenbett@posteo.me>"]
+edition = "2021"
+publish = false
+homepage = "https://hurryabit.github.io/felix"
+repository = "https://github.com/hurryabit/felix.git"
+license = "Apache 2.0"
