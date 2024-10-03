@@ -11,5 +11,5 @@ license.workspace = true
 
 [dependencies]
 serde.workspace = true
-tsify.workspace = true
+tsify-next.workspace = true
 wasm-bindgen.workspace = true

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tsify::{Tsify, declare};
+use tsify_next::{Tsify, declare};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use felix_common::{Problem, Severity};

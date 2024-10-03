@@ -16,5 +16,5 @@ crate-type = ["cdylib", "rlib"]
 felix-common = { path = "../common" }
 felix-parser = { path = "../parser" }
 serde.workspace = true
-tsify.workspace = true
+tsify-next.workspace = true
 wasm-bindgen.workspace = true

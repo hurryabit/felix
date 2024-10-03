@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tsify::Tsify;
+use tsify_next::Tsify;
 
 use crate::SrcLoc;
 

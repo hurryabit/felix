@@ -1,7 +1,7 @@
 use std::fmt;
 
 use serde::Serialize;
-use tsify::Tsify;
+use tsify_next::Tsify;
 
 #[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]

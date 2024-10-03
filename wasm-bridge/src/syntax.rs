@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tsify::Tsify;
+use tsify_next::Tsify;
 
 use felix_common::{srcloc::Mapper, SrcLoc};
 use felix_parser;
