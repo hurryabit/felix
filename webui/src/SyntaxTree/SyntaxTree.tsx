@@ -8,8 +8,11 @@ import '@mantine/code-highlight/styles.css';
 import "ace-builds/css/theme/github_light_default.css";
 import * as classes from "./SyntaxTree.css";
 
-function syntaxToData(root: syntax.Node): TreeNodeData[] {
+function syntaxToData(topLevel: syntax.Element[]): [TreeNodeData[], Map<string, syntax.Element>] {
+    const elements = new Map();
+
     function goElement(element: syntax.Element): TreeNodeData {
+        elements.set(element.id, element);
         switch (element.tag) {
             case "NODE":
                 return goNode(element);
@@ -21,31 +24,38 @@ function syntaxToData(root: syntax.Node): TreeNodeData[] {
     function goNode(node: syntax.Node): TreeNodeData {
         return {
             value: node.id,
-            label: node.kind,
-            children: node.children.flatMap(goElement),
+            label: <span className={classes.syntaxKind}>{node.kind}</span>,
+            children: node.children.map(goElement),
         };
     }
 
     function goToken(token: syntax.Token): TreeNodeData {
         return {
             value: token.id,
-            label: `${token.kind} — ${token.text}`,
+            label: <span className={classes.syntaxKind}>{token.kind} — {token.text}</span>,
         };
     }
 
-    return goNode(root).children ?? [];
+    return [topLevel.map(goElement), elements];
 }
 
 type Props = {
     syntax?: syntax.Node;
+    setHoveredSyntax: (element: syntax.Element | null) => void;
 }
 
-export default function SyntaxTree({ syntax }: Props) {
-    const data = useMemo(function () {
-        return syntax !== undefined ? syntaxToData(syntax ?? false) : [];
+export default function SyntaxTree({ syntax, setHoveredSyntax }: Props) {
+    const [data, elements] = useMemo(function () {
+        return syntaxToData(syntax?.children ?? []);
     }, [syntax]);
     const tree = useTree();
-    const { expand } = tree;
+    const { expand, hoveredNode } = tree;
+
+    // NOTE(MH): This is ugly but I don't know how to do better with the
+    // current Tree API.
+    useEffect(function () {
+        setHoveredSyntax(hoveredNode !== null ? elements.get(hoveredNode) ?? null : null);
+    }, [elements, hoveredNode, setHoveredSyntax]);
 
     useEffect(function () {
         for (const node of data) {
@@ -68,14 +78,7 @@ export default function SyntaxTree({ syntax }: Props) {
                             />
                             : <IconAbc size={16} />
                         }
-                        <span className={classes.syntaxKind}>
-                            {node.label}
-                            {
-                                node.nodeProps && <>
-                                    {" — "}<span className={node.nodeProps.className}>{node.nodeProps.text ?? ""}</span>
-                                </>
-                            }
-                        </span>
+                        {node.label}
                     </Group>
                 )}
             />

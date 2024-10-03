@@ -19,6 +19,10 @@ export default function Main() {
     const [problems, setProblems] = useState<wasm.Problem[]>([]);
     const [syntax, setSyntax] = useState<wasm.SyntaxNode>();
     const editorRef = useRef<AceEditor>(null);
+    const [hoveredSyntax, setHoveredSyntax] = useState<wasm.Element | null>(null);
+    const highlightedSpan = hoveredSyntax === null ? null : {start: hoveredSyntax.start, end: hoveredSyntax.end };
+
+    console.log("hovered syntax", hoveredSyntax);
 
     useEffect(function () {
         const { problems, syntax } = wasm.parse(program, { include_trivia: false });
@@ -47,12 +51,16 @@ export default function Main() {
                     program={program}
                     setProgram={setProgram}
                     problems={problems}
+                    highlightedSpan={highlightedSpan}
                 />
             </div>
             <div className={classes.outputPanel}>
                 <Tabs className={classes.outputTabs} value={activeTab} onChange={setActiveTab} inverted>
                     <Tabs.Panel value="parser" flex="1 1 0" mih={0}>
-                        <SyntaxTree syntax={syntax} />
+                        <SyntaxTree
+                            syntax={syntax}
+                            setHoveredSyntax={setHoveredSyntax}
+                        />
                     </Tabs.Panel>
                     <Tabs.Panel value="checker" flex={1}>Panel for the intermediate representation produced by the type checker.</Tabs.Panel>
                     <Tabs.Panel value="interpreter" flex={1}>Panel for the value produced by the interpreter.</Tabs.Panel>

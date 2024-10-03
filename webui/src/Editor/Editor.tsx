@@ -15,14 +15,17 @@ type Props = {
     program: string;
     setProgram: (program: string) => void;
     problems: wasm.Problem[];
+    highlightedSpan: { start: wasm.SrcLoc; end: wasm.SrcLoc } | null;
 }
 
-export default function Editor({ aceRef, program, setProgram, problems }: Props) {
-    const { annotations, markers } = useMemo(function () {
-        const annotations = problems.map(function (problem) {
+export default function Editor({ aceRef, program, setProgram, problems, highlightedSpan }: Props) {
+    const annotations = useMemo(function () {
+        return problems.map(function (problem) {
             const { line, column } = problem.start;
             return { row: line, column, text: problem.message, type: problem.severity.toLowerCase() };
         });
+    }, [problems]);
+    const markers = useMemo(function () {
         const markers = problems.map(function (problem) {
             return {
                 startRow: problem.start.line,
@@ -33,8 +36,18 @@ export default function Editor({ aceRef, program, setProgram, problems }: Props)
                 type: "text" as const,
             }
         });
-        return { annotations, markers };
-    }, [problems]);
+        if (highlightedSpan !== null) {
+            markers.push({
+                startRow: highlightedSpan.start.line,
+                startCol: highlightedSpan.start.column,
+                endRow: highlightedSpan.end.line,
+                endCol: highlightedSpan.end.column,
+                className: classes.highlightMarker,
+                type: "text" as const,
+            });
+        }
+        return markers;
+    }, [problems, highlightedSpan]);
 
     return <AceEditor
         name="editor"
@@ -55,6 +68,7 @@ export default function Editor({ aceRef, program, setProgram, problems }: Props)
             // enableLiveAutocompletion: true,
             fontFamily: vars.fontFamilyMonospace,
             fontSize: vars.fontSizes.md,
+            highlightActiveLine: false,
             newLineMode: "unix",
             showPrintMargin: false,
             useSoftTabs: true,
