@@ -26,23 +26,28 @@ export default function Main() {
         setSyntax(syntax);
     }, [program]);
 
-    const onSelectProblem = useCallback(function(problem: wasm.Problem) {
+    const onSelectProblem = useCallback(function (problem: wasm.Problem) {
         console.log("Problem:", problem);
         if (editorRef.current === null) {
             console.warn("Editor not yet loaded.");
             return
         }
         const editor = editorRef.current?.editor;
-        const {line, column} = problem.start;
-        editor.gotoLine(line, column, true);
-        // editor.scrollToRow(line);
+        const { line, column } = problem.start;
+        // NOTE(MH): The +1 is due to an inconsistency in Ace Editor.
+        editor.gotoLine(line + 1, column, true);
         editor.focus();
     }, []);
 
     return <div className={classes.mainColumn}>
         <div className={classes.editorOutputRow}>
             <div className={classes.editorPanel}>
-                <Editor aceRef={editorRef} program={program} setProgram={setProgram} />
+                <Editor
+                    aceRef={editorRef}
+                    program={program}
+                    setProgram={setProgram}
+                    problems={problems}
+                />
             </div>
             <div className={classes.outputPanel}>
                 <Tabs className={classes.outputTabs} value={activeTab} onChange={setActiveTab} inverted>

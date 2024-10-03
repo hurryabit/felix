@@ -20,7 +20,7 @@ export default function ProblemsPane({problems, onSelect}: Props) {
         }
         const problem = problems[index];
         onSelect(problem);
-    }, [problems]);
+    }, [problems, onSelect]);
 
     return <ScrollArea type="scroll" h="100%">
         <Box pt="xs">
