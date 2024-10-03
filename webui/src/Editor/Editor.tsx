@@ -4,15 +4,18 @@ import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
 import { vars } from "../theme";
+import { RefObject } from "react";
 
 type Props = {
+    aceRef: RefObject<AceEditor>;
     program: string;
     setProgram: (program: string) => void;
 }
 
-export default function Editor({program, setProgram}: Props) {
+export default function Editor({aceRef, program, setProgram}: Props) {
     return <AceEditor
         name="editor"
+        ref={aceRef}
         defaultValue={program}
         focus
         width="100%"

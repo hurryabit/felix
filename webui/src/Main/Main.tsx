@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Tabs } from "@mantine/core";
 import { useDebouncedState } from "@mantine/hooks";
+import type AceEditor from "react-ace";
 
 import Problems from "../Problems/Problems";
 import SyntaxTree from "../SyntaxTree/SyntaxTree";
@@ -17,6 +18,7 @@ export default function Main() {
     const [program, setProgram] = useDebouncedState<string>(SAMPLE_PROGRAM, 200);
     const [problems, setProblems] = useState<wasm.Problem[]>([]);
     const [syntax, setSyntax] = useState<wasm.SyntaxNode>();
+    const editorRef = useRef<AceEditor>(null);
 
     useEffect(function () {
         const { problems, syntax } = wasm.parse(program, { include_trivia: false });
@@ -24,10 +26,23 @@ export default function Main() {
         setSyntax(syntax);
     }, [program]);
 
+    const onSelectProblem = useCallback(function(problem: wasm.Problem) {
+        console.log("Problem:", problem);
+        if (editorRef.current === null) {
+            console.warn("Editor not yet loaded.");
+            return
+        }
+        const editor = editorRef.current?.editor;
+        const {line, column} = problem.start;
+        editor.gotoLine(line, column, true);
+        // editor.scrollToRow(line);
+        editor.focus();
+    }, []);
+
     return <div className={classes.mainColumn}>
         <div className={classes.editorOutputRow}>
             <div className={classes.editorPanel}>
-                <Editor program={program} setProgram={setProgram} />
+                <Editor aceRef={editorRef} program={program} setProgram={setProgram} />
             </div>
             <div className={classes.outputPanel}>
                 <Tabs className={classes.outputTabs} value={activeTab} onChange={setActiveTab} inverted>
@@ -45,7 +60,7 @@ export default function Main() {
             </div>
         </div>
         <div className={classes.problemsPane}>
-            <Problems problems={problems} />
+            <Problems problems={problems} onSelect={onSelectProblem} />
         </div>
     </div>
 }

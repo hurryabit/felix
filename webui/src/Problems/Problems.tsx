@@ -8,12 +8,19 @@ import * as classes from "./Problems.css";
 
 type Props = {
     problems: Problem[];
+    onSelect: (problem: Problem) => void;
 }
 
-export default function ProblemsPane({problems}: Props) {
+export default function ProblemsPane({problems, onSelect}: Props) {
     const onProblemClick = useCallback(function onClick(event: MouseEvent<HTMLLIElement>) {
-        alert(`Clicked on problem ${event.currentTarget.dataset.index}.`);
-    }, []);
+        const index = parseInt(event.currentTarget.dataset.index ?? "");
+        if (isNaN(index) || index < 0 || index >= problems.length) {
+            console.error(`Cannot handle click on problem: ${event}`);
+            return
+        }
+        const problem = problems[index];
+        onSelect(problem);
+    }, [problems]);
 
     return <ScrollArea type="scroll" h="100%">
         <Box pt="xs">
