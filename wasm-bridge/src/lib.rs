@@ -1,14 +1,20 @@
 use serde::Serialize;
-use tsify::Tsify;
+use tsify::{Tsify, declare};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use felix_common::{Problem, Severity};
 use felix_parser::{rules, Parser};
 
+pub mod syntax;
+
+#[declare]
+pub type SyntaxNode = syntax::Node;
+
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
 pub struct ParseResult {
-    problems: Vec<Problem>,
+    pub problems: Vec<Problem>,
+    pub syntax: syntax::Node,
 }
 
 #[wasm_bindgen]
@@ -30,5 +36,6 @@ pub fn parse(input: &str) -> ParseResult {
             }
         })
         .collect();
-    ParseResult { problems }
+    let syntax = syntax::Node::from_parser_node(result.syntax, &mapper);
+    ParseResult { problems, syntax }
 }

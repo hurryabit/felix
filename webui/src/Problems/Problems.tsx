@@ -15,7 +15,7 @@ export default function ProblemsPane({problems}: Props) {
         alert(`Clicked on problem ${event.currentTarget.dataset.index}.`);
     }, []);
 
-    return <ScrollArea h="100%" type="auto">
+    return <ScrollArea type="scroll" h="100%">
         <Box pt="xs">
             <List
                 className={classes.problemsList}

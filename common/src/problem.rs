@@ -4,6 +4,7 @@ use tsify::Tsify;
 use crate::SrcLoc;
 
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[tsify(into_wasm_abi)]
 pub enum Severity {
     Error,

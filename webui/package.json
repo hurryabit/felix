@@ -15,6 +15,7 @@
     "upload": "gh-pages -d dist"
   },
   "dependencies": {
+    "@mantine/code-highlight": "^7.13.0",
     "@mantine/core": "7.13.0",
     "@mantine/hooks": "7.13.0",
     "@mantine/vanilla-extract": "7.13.0",
