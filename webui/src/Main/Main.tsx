@@ -22,8 +22,6 @@ export default function Main() {
     const [hoveredSyntax, setHoveredSyntax] = useState<wasm.Element | null>(null);
     const highlightedSpan = hoveredSyntax === null ? null : {start: hoveredSyntax.start, end: hoveredSyntax.end };
 
-    console.log("hovered syntax", hoveredSyntax);
-
     useEffect(function () {
         const { problems, syntax } = wasm.parse(program, { include_trivia: false });
         setProblems(problems);
@@ -31,7 +29,6 @@ export default function Main() {
     }, [program]);
 
     const onSelectProblem = useCallback(function (problem: wasm.Problem) {
-        console.log("Problem:", problem);
         if (editorRef.current === null) {
             console.warn("Editor not yet loaded.");
             return
