@@ -8,16 +8,8 @@ import '@mantine/code-highlight/styles.css';
 import "ace-builds/css/theme/github_light_default.css";
 import * as classes from "./SyntaxTree.css";
 
-function syntaxToData(root: syntax.Node, showTrivia: boolean): TreeNodeData[] {
-    let index = 0;
-
-    function getNextValue() {
-        const value = index.toString();
-        index += 1;
-        return value;
-    }
-
-    function goElement(element: syntax.Element): [TreeNodeData] | [] {
+function syntaxToData(root: syntax.Node): TreeNodeData[] {
+    function goElement(element: syntax.Element): TreeNodeData {
         switch (element.tag) {
             case "NODE":
                 return goNode(element);
@@ -26,33 +18,32 @@ function syntaxToData(root: syntax.Node, showTrivia: boolean): TreeNodeData[] {
         }
     }
 
-    function goNode(node: syntax.Node): [TreeNodeData] {
-        return [{
-            value: getNextValue(),
+    function goNode(node: syntax.Node): TreeNodeData {
+        return {
+            value: node.id,
             label: node.kind,
             children: node.children.flatMap(goElement),
-        }];
+        };
     }
 
-    function goToken(token: syntax.Token): [TreeNodeData] | [] {
-        return token.is_trivia && !showTrivia ? [] : [{
-            value: getNextValue(),
+    function goToken(token: syntax.Token): TreeNodeData {
+        return {
+            value: token.id,
             label: `${token.kind} — ${token.text}`,
-        }];
+        };
     }
 
-    return goNode(root)[0].children ?? [];
+    return goNode(root).children ?? [];
 }
 
 type Props = {
-    showTrivia?: boolean,
     syntax?: syntax.Node;
 }
 
-export default function SyntaxTree({ syntax, showTrivia }: Props) {
+export default function SyntaxTree({ syntax }: Props) {
     const data = useMemo(function () {
-        return syntax !== undefined ? syntaxToData(syntax, showTrivia ?? false) : [];
-    }, [syntax, showTrivia]);
+        return syntax !== undefined ? syntaxToData(syntax ?? false) : [];
+    }, [syntax]);
     const tree = useTree();
     const { expand } = tree;
 

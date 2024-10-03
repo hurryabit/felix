@@ -24,7 +24,7 @@ export default function Main() {
     const [syntax, setSyntax] = useState<wasm.SyntaxNode>();
 
     useEffect(function () {
-        const { problems, syntax } = wasm.parse(program);
+        const { problems, syntax } = wasm.parse(program, { include_trivia: false });
         setProblems(problems);
         setSyntax(syntax);
     }, [program]);
@@ -57,7 +57,7 @@ export default function Main() {
             <div className={classes.outputPanel}>
                 <Tabs className={classes.outputTabs} value={activeTab} onChange={setActiveTab} inverted>
                     <Tabs.Panel value="parser" flex="1 1 0" mih={0}>
-                        <SyntaxTree syntax={syntax} showTrivia={false} />
+                        <SyntaxTree syntax={syntax} />
                     </Tabs.Panel>
                     <Tabs.Panel value="checker" flex={1}>Panel for the intermediate representation produced by the type checker.</Tabs.Panel>
                     <Tabs.Panel value="interpreter" flex={1}>Panel for the value produced by the interpreter.</Tabs.Panel>
