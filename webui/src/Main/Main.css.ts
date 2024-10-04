@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { rem } from '@mantine/core';
+import { rem } from "@mantine/core";
 
 export const mainColumn = style({
     display: "flex",
@@ -28,7 +28,7 @@ export const outputTabs = style({
     display: "flex",
     flexDirection: "column",
     height: "100%",
-})
+});
 
 export const problemsPane = style({
     display: "block",

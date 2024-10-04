@@ -2,10 +2,30 @@
     "cSpell.words": [
         "hurryabit",
         "Huschenbett",
+        "ianvs",
         "mantine",
+        "mantinex",
         "tabler",
         "vars",
         "webui"
     ],
-    "cSpell.language": "en-GB"
+    "cSpell.language": "en-GB",
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
