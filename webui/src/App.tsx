@@ -3,9 +3,12 @@ import { ActionIcon, AppShell, Center, Group, MantineProvider, rem, Text } from 
 
 import { theme, vars } from "./theme";
 import Main from "./Main/Main";
-import { IconBrandGithubFilled, IconMoonFilled } from "@tabler/icons-react";
+import { IconBrandGithubFilled, IconMaximize, IconMinimize, IconMoonFilled } from "@tabler/icons-react";
+import { useFullscreen } from "@mantine/hooks";
 
 export default function App() {
+  const { fullscreen, toggle: toggleFullscreen } = useFullscreen();
+
   return (
     <MantineProvider theme={theme}>
       <AppShell
@@ -31,13 +34,19 @@ export default function App() {
               <ActionIcon color="white" size="md" onClick={() => alert("Soon!")}>
                 <IconMoonFilled style={{ width: '70%', height: '70%', color: vars.colors.blue.filled }} stroke={1.5} />
               </ActionIcon>
+              <ActionIcon color="white" size="md" onClick={toggleFullscreen}>
+                {fullscreen
+                  ? <IconMinimize style={{ width: '70%', height: '70%', color: vars.colors.blue.filled }} stroke={1.5} />
+                  : <IconMaximize style={{ width: '70%', height: '70%', color: vars.colors.blue.filled }} stroke={1.5} />
+                }
+              </ActionIcon>
             </Group>
           </Group>
         </AppShell.Header>
         <AppShell.Footer>
-          <Center  h="100%" w="100%" bg={vars.colors.blue.filled} c="white">
+          <Center h="100%" w="100%" bg={vars.colors.blue.filled} c="white">
             <Text>
-              © 2024 <a href="https://github.com/hurryabit/" style={{color: "white"}}>Martin Huschenbett</a>
+              © 2024 <a href="https://github.com/hurryabit/" style={{ color: "white" }}>Martin Huschenbett</a>
             </Text>
           </Center>
         </AppShell.Footer>
