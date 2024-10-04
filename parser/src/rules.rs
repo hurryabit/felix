@@ -70,7 +70,9 @@ impl<'a> Parser<'a> {
         let mut parser = self.with_node(FUN_EXPR);
         parser.consume(FUN);
         parser.with_follow(ARROW).param_list();
-        parser.with_follow(FIRST_EXPR).find_and_consume(ARROW, "FUN_EXPR");
+        parser
+            .with_follow(FIRST_EXPR)
+            .find_and_consume(ARROW, "FUN_EXPR");
         parser.expr()
     }
 
@@ -94,15 +96,20 @@ impl<'a> Parser<'a> {
                 }
             }
             parser.with_follow(ASSIGN).let_var();
-            parser.with_follow(FIRST_EXPR).find_and_consume(ASSIGN, "LET_EXPR");
+            parser
+                .with_follow(FIRST_EXPR)
+                .find_and_consume(ASSIGN, "LET_EXPR");
             parser.expr();
         }
-        parser.with_follow(FIRST_EXPR).find_and_consume(IN, "LET_EXPR");
+        parser
+            .with_follow(FIRST_EXPR)
+            .find_and_consume(IN, "LET_EXPR");
         parser.expr();
     }
 
     fn let_var(&mut self) {
-        self.with_node(LET_VAR).find_and_consume(ID_LOWER, "LET_VAR");
+        self.with_node(LET_VAR)
+            .find_and_consume(ID_LOWER, "LET_VAR");
     }
 
     fn if_expr(&mut self) {

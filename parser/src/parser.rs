@@ -47,7 +47,12 @@ impl<'a> Parser<'a> {
         self.builder.checkpoint()
     }
 
-    pub(crate) fn error(&mut self, found: SyntaxKind, expected: impl SyntaxExpecation, rule: &'static str) {
+    pub(crate) fn error(
+        &mut self,
+        found: SyntaxKind,
+        expected: impl SyntaxExpecation,
+        rule: &'static str,
+    ) {
         let span = self.lexer.span();
         self.errors.push(ParseError {
             span: span.start as u32..span.end as u32,
@@ -132,11 +137,18 @@ impl<'a> Parser<'a> {
         NodeScope::new(self, kind)
     }
 
-    pub(crate) fn with_node_at<'b>(&'b mut self, checkpoint: rowan::Checkpoint, kind: SyntaxKind) -> NodeScope<'a, 'b> {
+    pub(crate) fn with_node_at<'b>(
+        &'b mut self,
+        checkpoint: rowan::Checkpoint,
+        kind: SyntaxKind,
+    ) -> NodeScope<'a, 'b> {
         NodeScope::new_at_checkpoint(self, checkpoint, kind)
     }
 
-    pub(crate) fn with_follow<'b>(&'b mut self, kinds: impl SyntaxExpecation) -> FollowScope<'a, 'b> {
+    pub(crate) fn with_follow<'b>(
+        &'b mut self,
+        kinds: impl SyntaxExpecation,
+    ) -> FollowScope<'a, 'b> {
         FollowScope::new(self, kinds)
     }
 }
@@ -151,7 +163,11 @@ impl<'a, 'b> NodeScope<'a, 'b> {
         Self { parser }
     }
 
-    fn new_at_checkpoint(parser: &'b mut Parser<'a>, checkpoint: rowan::Checkpoint, kind: SyntaxKind) -> Self {
+    fn new_at_checkpoint(
+        parser: &'b mut Parser<'a>,
+        checkpoint: rowan::Checkpoint,
+        kind: SyntaxKind,
+    ) -> Self {
         parser.builder.start_node_at(checkpoint, kind.into());
         Self { parser }
     }

@@ -2,7 +2,7 @@ mod kind;
 mod parser;
 pub mod rules;
 
-pub use kind::{SyntaxElement, SyntaxNode, SyntaxToken, dump_syntax};
+pub use kind::{dump_syntax, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use parser::{ParseError, ParseResult, Parser};
 
 #[cfg(test)]
