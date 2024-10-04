@@ -2,7 +2,7 @@ use serde::Serialize;
 use tsify_next::Tsify;
 
 use felix_common::{srcloc::Mapper, SrcLoc};
-use felix_parser;
+use felix_parser::syntax as parser;
 
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
@@ -33,8 +33,18 @@ pub enum Element {
 }
 
 impl Node {
+    pub fn fake() -> Self {
+        Self {
+            id: String::from(""),
+            start: SrcLoc { line: 0, column: 0 },
+            end: SrcLoc { line: 0, column: 0 },
+            kind: String::from("FAKE"),
+            children: vec![],
+        }
+    }
+
     pub fn from_parser_node(
-        node: felix_parser::SyntaxNode,
+        node: parser::Node,
         id: String,
         include_trivia: bool,
         mapper: &Mapper,
@@ -44,15 +54,21 @@ impl Node {
             .children_with_tokens()
             .enumerate()
             .filter_map(|(index, element)| {
-                if element.kind().is_trivia() && !include_trivia {
-                    None
-                } else {
-                    Some(Element::from_parser_element(
-                        element,
-                        format!("{}.{}", id, index),
+                let id = format!("{}.{}", id, index);
+                match element {
+                    parser::Element::Node(node) => Some(Element::Node(Node::from_parser_node(
+                        node,
+                        id,
                         include_trivia,
                         mapper,
-                    ))
+                    ))),
+                    parser::Element::Token(token) => {
+                        if token.kind().is_trivia() {
+                            None
+                        } else {
+                            Some(Element::Token(Token::from_parser_token(token, id, mapper)))
+                        }
+                    }
                 }
             })
             .collect();
@@ -67,11 +83,7 @@ impl Node {
 }
 
 impl Token {
-    pub fn from_parser_token(
-        token: felix_parser::SyntaxToken,
-        id: String,
-        mapper: &Mapper,
-    ) -> Token {
+    pub fn from_parser_token(token: parser::Token, id: String, mapper: &Mapper) -> Token {
         let span = token.text_range();
         Token {
             id,
@@ -79,24 +91,6 @@ impl Token {
             end: mapper.src_loc(span.end().into()),
             kind: format!("{:?}", token.kind()),
             text: token.text().to_string(),
-        }
-    }
-}
-
-impl Element {
-    pub fn from_parser_element(
-        element: felix_parser::SyntaxElement,
-        id: String,
-        include_trivia: bool,
-        mapper: &Mapper,
-    ) -> Element {
-        match element {
-            felix_parser::SyntaxElement::Node(node) => {
-                Element::Node(Node::from_parser_node(node, id, include_trivia, mapper))
-            }
-            felix_parser::SyntaxElement::Token(token) => {
-                Element::Token(Token::from_parser_token(token, id, mapper))
-            }
         }
     }
 }

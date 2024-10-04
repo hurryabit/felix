@@ -1,10 +1,16 @@
+#![cfg(test)]
 use super::*;
 
 use insta::assert_snapshot;
 
-fn parse(input: &str) -> ParseResult {
+fn parse<'a>(input: &'a str) -> ParseResult {
     let parser = Parser::new(input);
-    return parser.parse(rules::root);
+    return parser.run(Parser::program);
+}
+
+// TODO(MH): Filter out trivia.
+fn dump_syntax(node: syntax::Node, _include_trivia: bool) -> String {
+    format!("{:#?}", node)
 }
 
 fn dump_errors(errors: &Vec<ParseError>) -> String {
@@ -15,555 +21,219 @@ fn dump_errors(errors: &Vec<ParseError>) -> String {
     buffer
 }
 
+
 #[test]
 fn empty() {
     let result = parse("");
     assert_snapshot!(dump_syntax(result.syntax, false), @r#"
-    ROOT@0..0
-      ERROR@0..0
+    PROGRAM@0..0
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 0..0, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    "#);
-}
-
-#[test]
-fn fun_simple() {
-    let result = parse("fun x -> (x + 1)");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-  ROOT@0..16
-    FUN_EXPR@0..16
-      #FUN@0..3 "fun"
-      PARAM_LIST@3..6
-        PARAM@4..5
-          #ID_LOWER@4..5 "x"
-      #ARROW@6..8 "->"
-      PAREN_EXPR@9..16
-        #LPAREN@9..10 "("
-        BINOP_EXPR@10..15
-          VAR_EXPR@10..11
-            #ID_LOWER@10..11 "x"
-          BINOP@12..13
-            #PLUS@12..13 "+"
-          LIT_EXPR@14..15
-            #NAT_LIT@14..15 "1"
-        #RPAREN@15..16 ")"
-  "##);
-    assert_snapshot!(dump_errors(&result.errors), @r"");
-}
-
-#[test]
-fn fun_no_params() {
-    let result = parse("fun   -> (x + 1)");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-  ROOT@0..16
-    FUN_EXPR@0..16
-      #FUN@0..3 "fun"
-      PARAM_LIST@3..6
-      #ARROW@6..8 "->"
-      PAREN_EXPR@9..16
-        #LPAREN@9..10 "("
-        BINOP_EXPR@10..15
-          VAR_EXPR@10..11
-            #ID_LOWER@10..11 "x"
-          BINOP@12..13
-            #PLUS@12..13 "+"
-          LIT_EXPR@14..15
-            #NAT_LIT@14..15 "1"
-        #RPAREN@15..16 ")"
-  "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-  "#);
-}
-
-#[test]
-fn fun_no_arrow() {
-    let result = parse("fun x    (x + 1)");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-  ROOT@0..16
-    FUN_EXPR@0..16
-      #FUN@0..3 "fun"
-      PARAM_LIST@3..9
-        PARAM@4..5
-          #ID_LOWER@4..5 "x"
-      ERROR@9..9
-      PAREN_EXPR@9..16
-        #LPAREN@9..10 "("
-        BINOP_EXPR@10..15
-          VAR_EXPR@10..11
-            #ID_LOWER@10..11 "x"
-          BINOP@12..13
-            #PLUS@12..13 "+"
-          LIT_EXPR@14..15
-            #NAT_LIT@14..15 "1"
-        #RPAREN@15..16 ")"
-  "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 9..10, found: LPAREN, expected: {ARROW}, rule: "FUN_EXPR" }
-    "#);
-}
-
-#[test]
-fn fun_bad_body() {
-    let result = parse("fun x -> (x +  )");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..16
-      FUN_EXPR@0..16
-        #FUN@0..3 "fun"
-        PARAM_LIST@3..6
-          PARAM@4..5
-            #ID_LOWER@4..5 "x"
-        #ARROW@6..8 "->"
-        PAREN_EXPR@9..16
-          #LPAREN@9..10 "("
-          BINOP_EXPR@10..15
-            VAR_EXPR@10..11
-              #ID_LOWER@10..11 "x"
-            BINOP@12..13
-              #PLUS@12..13 "+"
-            ERROR@15..15
-          #RPAREN@15..16 ")"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 15..16, found: RPAREN, expected: {TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "ATOM_EXPR" }
-    "#);
-}
-
-#[test]
-fn fun_no_body() {
-    let result = parse("fun x ->");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..8
-      FUN_EXPR@0..8
-        #FUN@0..3 "fun"
-        PARAM_LIST@3..6
-          PARAM@4..5
-            #ID_LOWER@4..5 "x"
-        #ARROW@6..8 "->"
-        ERROR@8..8
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 8..8, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    "#);
-}
-
-#[test]
-fn let_simple() {
-    let result = parse("let     x = 1 + 2 in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
     assert_snapshot!(dump_errors(&result.errors), @"");
 }
 
 #[test]
-fn let_rec() {
-    let result = parse("let rec x = 1 + 2 in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..7
-          #REC@4..7 "rec"
-        LET_VAR@7..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
+fn one_good_fn() {
+    let result = parse("fn f() {}");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..9
+      DEFN_FN@0..9
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..6
+          LPAREN@4..5 "("
+          RPAREN@5..6 ")"
+        WHITESPACE@6..7 " "
+        EXPR_BLOCK@7..9
+          LBRACE@7..8 "{"
+          RBRACE@8..9 "}"
+    "#);
     assert_snapshot!(dump_errors(&result.errors), @"");
 }
 
 #[test]
-fn let_no_var() {
-    let result = parse("let       = 1 + 2 in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..10
-        LET_VAR@10..10
-          ERROR@10..10
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
+fn two_good_fns() {
+    let result = parse("fn f() {} fn g() {}");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..19
+      DEFN_FN@0..9
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..6
+          LPAREN@4..5 "("
+          RPAREN@5..6 ")"
+        WHITESPACE@6..7 " "
+        EXPR_BLOCK@7..9
+          LBRACE@7..8 "{"
+          RBRACE@8..9 "}"
+      WHITESPACE@9..10 " "
+      DEFN_FN@10..19
+        KW_FN@10..12 "fn"
+        WHITESPACE@12..13 " "
+        IDENT@13..14 "g"
+        PARAMS_FN@14..16
+          LPAREN@14..15 "("
+          RPAREN@15..16 ")"
+        WHITESPACE@16..17 " "
+        EXPR_BLOCK@17..19
+          LBRACE@17..18 "{"
+          RBRACE@18..19 "}"
+    "#);
+    assert_snapshot!(dump_errors(&result.errors), @"");
+}
+
+#[test]
+fn infix() {
+    let result = parse("fn f(x) { x + x }");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..17
+      DEFN_FN@0..17
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..7
+          LPAREN@4..5 "("
+          BINDER@5..6
+            IDENT@5..6 "x"
+          RPAREN@6..7 ")"
+        WHITESPACE@7..8 " "
+        EXPR_BLOCK@8..17
+          LBRACE@8..9 "{"
+          WHITESPACE@9..10 " "
+          EXPR_INFIX@10..16
+            EXPR_VAR@10..11
+              IDENT@10..11 "x"
+            WHITESPACE@11..12 " "
+            OP_INFIX@12..13
+              PLUS@12..13 "+"
+            WHITESPACE@13..14 " "
+            EXPR_VAR@14..15
+              IDENT@14..15 "x"
+            WHITESPACE@15..16 " "
+          RBRACE@16..17 "}"
+    "#);
+    assert_snapshot!(dump_errors(&result.errors), @"");
+}
+
+#[test]
+fn missing_infix() {
+    let result = parse("fn f(x) { x x }");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..15
+      DEFN_FN@0..12
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..7
+          LPAREN@4..5 "("
+          BINDER@5..6
+            IDENT@5..6 "x"
+          RPAREN@6..7 ")"
+        WHITESPACE@7..8 " "
+        EXPR_BLOCK@8..12
+          LBRACE@8..9 "{"
+          WHITESPACE@9..10 " "
+          EXPR_VAR@10..11
+            IDENT@10..11 "x"
+          WHITESPACE@11..12 " "
+      ERROR@12..15
+        IDENT@12..13 "x"
+        WHITESPACE@13..14 " "
+        RBRACE@14..15 "}"
+    "#);
     assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 10..11, found: ASSIGN, expected: {ID_LOWER}, rule: "LET_VAR" }
+    ParseError { span: 12..13, found: IDENT, expected: EnumSet(RBRACE | EQUALS | SEMI), rule: "EXPR_BLOCK" }
     "#);
 }
 
 #[test]
-fn let_no_assign() {
-    let result = parse("let     x   1 + 2 in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        ERROR@12..12
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 12..13, found: NAT_LIT, expected: {ASSIGN}, rule: "LET_EXPR" }
+fn call() {
+    let result = parse("fn f(x) { f(x) }");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..16
+      DEFN_FN@0..16
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..7
+          LPAREN@4..5 "("
+          BINDER@5..6
+            IDENT@5..6 "x"
+          RPAREN@6..7 ")"
+        WHITESPACE@7..8 " "
+        EXPR_BLOCK@8..16
+          LBRACE@8..9 "{"
+          WHITESPACE@9..10 " "
+          EXPR_CALL@10..14
+            EXPR_VAR@10..11
+              IDENT@10..11 "f"
+            ARGS@11..14
+              LPAREN@11..12 "("
+              EXPR_VAR@12..13
+                IDENT@12..13 "x"
+              RPAREN@13..14 ")"
+          WHITESPACE@14..15 " "
+          RBRACE@15..16 "}"
     "#);
+    assert_snapshot!(dump_errors(&result.errors), @"");
 }
 
 #[test]
-fn let_no_bindee() {
-    let result = parse("let     x =       in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        ERROR@18..18
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 18..20, found: IN, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
+fn one_tuple() {
+    let result = parse("fn f() { (1,) }");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..15
+      DEFN_FN@0..15
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..6
+          LPAREN@4..5 "("
+          RPAREN@5..6 ")"
+        WHITESPACE@6..7 " "
+        EXPR_BLOCK@7..15
+          LBRACE@7..8 "{"
+          WHITESPACE@8..9 " "
+          EXPR_TUPLE@9..13
+            LPAREN@9..10 "("
+            EXPR_LIT@10..11
+              LIT_NAT@10..11 "1"
+            COMMA@11..12 ","
+            RPAREN@12..13 ")"
+          WHITESPACE@13..14 " "
+          RBRACE@14..15 "}"
     "#);
+    assert_snapshot!(dump_errors(&result.errors), @"");
 }
 
 #[test]
-fn let_bad_bindee1() {
-    let result = parse("let     x =   + 2 in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        ERROR@14..16
-          #PLUS@14..15 "+"
-        LIT_EXPR@16..17
-          #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 14..15, found: PLUS, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
+fn assign() {
+    let result = parse("fn f() { x = 1; }");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..17
+      DEFN_FN@0..17
+        KW_FN@0..2 "fn"
+        WHITESPACE@2..3 " "
+        IDENT@3..4 "f"
+        PARAMS_FN@4..6
+          LPAREN@4..5 "("
+          RPAREN@5..6 ")"
+        WHITESPACE@6..7 " "
+        EXPR_BLOCK@7..17
+          LBRACE@7..8 "{"
+          WHITESPACE@8..9 " "
+          STMT_ASSIGN@9..15
+            EXPR_VAR@9..10
+              IDENT@9..10 "x"
+            WHITESPACE@10..11 " "
+            EQUALS@11..12 "="
+            WHITESPACE@12..13 " "
+            EXPR_LIT@13..14
+              LIT_NAT@13..14 "1"
+            SEMI@14..15 ";"
+          WHITESPACE@15..16 " "
+          RBRACE@16..17 "}"
     "#);
-}
-
-#[test]
-fn let_bad_bindee2() {
-    let result = parse("let     x = 1 +   in x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          ERROR@18..18
-        #IN@18..20 "in"
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 18..20, found: IN, expected: {TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "ATOM_EXPR" }
-    "#);
-}
-
-#[test]
-fn let_no_in() {
-    let result = parse("let     x = 1 + 2    x + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..21
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        ERROR@21..21
-        BINOP_EXPR@21..26
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          LIT_EXPR@25..26
-            #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 21..22, found: ID_LOWER, expected: {IN}, rule: "LET_EXPR" }
-    "#);
-}
-
-#[test]
-fn let_no_body() {
-    let result = parse("let     x = 1 + 2 in");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..20
-      LET_EXPR@0..20
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        ERROR@20..20
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 20..20, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    "#);
-}
-
-#[test]
-fn let_bad_body1() {
-    let result = parse("let     x = 1 + 2 in   + 1");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..26
-      LET_EXPR@0..26
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        ERROR@23..25
-          #PLUS@23..24 "+"
-        LIT_EXPR@25..26
-          #NAT_LIT@25..26 "1"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 23..24, found: PLUS, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    "#);
-}
-
-#[test]
-fn let_bad_body2() {
-    let result = parse("let     x = 1 + 2 in x +");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..24
-      LET_EXPR@0..24
-        #LET@0..3 "let"
-        LET_MOD@3..8
-        LET_VAR@8..9
-          #ID_LOWER@8..9 "x"
-        #ASSIGN@10..11 "="
-        BINOP_EXPR@12..18
-          LIT_EXPR@12..13
-            #NAT_LIT@12..13 "1"
-          BINOP@14..15
-            #PLUS@14..15 "+"
-          LIT_EXPR@16..17
-            #NAT_LIT@16..17 "2"
-        #IN@18..20 "in"
-        BINOP_EXPR@21..24
-          VAR_EXPR@21..22
-            #ID_LOWER@21..22 "x"
-          BINOP@23..24
-            #PLUS@23..24 "+"
-          ERROR@24..24
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 24..24, found: EOF, expected: {TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "ATOM_EXPR" }
-    "#);
-}
-
-#[test]
-fn arith_simple() {
-    let result = parse("1 + 2 * 3 + 4");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..13
-      BINOP_EXPR@0..13
-        BINOP_EXPR@0..10
-          LIT_EXPR@0..1
-            #NAT_LIT@0..1 "1"
-          BINOP@2..3
-            #PLUS@2..3 "+"
-          BINOP_EXPR@4..9
-            LIT_EXPR@4..5
-              #NAT_LIT@4..5 "2"
-            BINOP@6..7
-              #STAR@6..7 "*"
-            LIT_EXPR@8..9
-              #NAT_LIT@8..9 "3"
-        BINOP@10..11
-          #PLUS@10..11 "+"
-        LIT_EXPR@12..13
-          #NAT_LIT@12..13 "4"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r"");
-}
-
-// #[should_panic(expected = "consume end-of-file")]
-#[test]
-fn let_no_nothing() {
-    let result = parse(
-        r#"
-        let
-        "#,
-    );
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..21
-      LET_EXPR@9..21
-        #LET@9..12 "let"
-        LET_MOD@12..21
-        LET_VAR@21..21
-          ERROR@21..21
-        ERROR@21..21
-        ERROR@21..21
-        ERROR@21..21
-        ERROR@21..21
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 21..21, found: EOF, expected: {ID_LOWER}, rule: "LET_VAR" }
-    ParseError { span: 21..21, found: EOF, expected: {ASSIGN}, rule: "LET_EXPR" }
-    ParseError { span: 21..21, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    ParseError { span: 21..21, found: EOF, expected: {IN}, rule: "LET_EXPR" }
-    ParseError { span: 21..21, found: EOF, expected: {FUN, LET, IF, TRUE, FALSE, LPAREN, ID_LOWER, NAT_LIT}, rule: "EXPR" }
-    "#);
-}
-
-#[should_panic(expected = "not yet implemented")]
-#[test]
-fn arith_fibonacci() {
-    let result = parse(
-        r#"
-        let rec fib = fun n ->
-            if n <= 1 then
-                1
-            else
-                fib (n-2) + fib (n-1)
-        in
-        fib 9
-        "#,
-    );
-    assert_snapshot!(dump_syntax(result.syntax, false), @r##"
-    ROOT@0..13
-      BINOP_EXPR@0..13
-        BINOP_EXPR@0..10
-          LIT_EXPR@0..1
-            #NAT_LIT@0..1 "1"
-          BINOP@2..3
-            #PLUS@2..3 "+"
-          BINOP_EXPR@4..9
-            LIT_EXPR@4..5
-              #NAT_LIT@4..5 "2"
-            BINOP@6..7
-              #STAR@6..7 "*"
-            LIT_EXPR@8..9
-              #NAT_LIT@8..9 "3"
-        BINOP@10..11
-          #PLUS@10..11 "+"
-        LIT_EXPR@12..13
-          #NAT_LIT@12..13 "4"
-    "##);
-    assert_snapshot!(dump_errors(&result.errors), @r"");
+    assert_snapshot!(dump_errors(&result.errors), @"");
 }

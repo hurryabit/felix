@@ -13,6 +13,7 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+console_error_panic_hook = "0.1.7"
 felix-common = { path = "../common" }
 felix-parser = { path = "../parser" }
 serde.workspace = true

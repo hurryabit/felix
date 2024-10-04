@@ -16,6 +16,6 @@ pub struct Problem {
     pub start: SrcLoc,
     pub end: SrcLoc,
     pub severity: Severity,
-    pub source: &'static str,
+    pub source: String,
     pub message: String,
 }

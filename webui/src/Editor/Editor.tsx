@@ -1,7 +1,7 @@
 import { RefObject, useMemo } from "react";
 import AceEditor from "react-ace";
 
-import "ace-builds/src-noconflict/mode-ocaml";
+import "ace-builds/src-noconflict/mode-rust";
 import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
@@ -68,7 +68,7 @@ export default function Editor({ aceRef, program, setProgram, problems, highligh
             width="100%"
             height="100%"
             onChange={setProgram}
-            mode="ocaml"
+            mode="rust"
             theme="github_light_default"
             // theme="github_dark"
             annotations={annotations}

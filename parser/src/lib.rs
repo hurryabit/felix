@@ -1,8 +1,8 @@
-mod kind;
+mod first;
 mod parser;
 pub mod rules;
+pub mod syntax;
 
-pub use kind::{dump_syntax, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use parser::{ParseError, ParseResult, Parser};
 
 #[cfg(test)]

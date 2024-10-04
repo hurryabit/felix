@@ -3,7 +3,7 @@ use tsify_next::{declare, Tsify};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use felix_common::{Problem, Severity};
-use felix_parser::{rules, Parser};
+use felix_parser::Parser;
 
 pub mod syntax;
 
@@ -25,9 +25,10 @@ pub struct ParseResult {
 
 #[wasm_bindgen]
 pub fn parse(input: &str, options: ParseOptions) -> ParseResult {
+    console_error_panic_hook::set_once();
     let mapper = felix_common::srcloc::Mapper::new(input);
     let parser = Parser::new(input);
-    let result = parser.parse(rules::root);
+    let result = parser.run(Parser::program);
     let problems = result
         .errors
         .into_iter()
@@ -38,7 +39,7 @@ pub fn parse(input: &str, options: ParseOptions) -> ParseResult {
                 end: mapper.src_loc(span.end),
                 severity: Severity::Error,
                 source: error.rule,
-                message: format!("Found {:?}, expected {:?}.", error.found, error.expected),
+                message: format!("Found {}, expected {}.", error.found, error.expected),
             }
         })
         .collect();
