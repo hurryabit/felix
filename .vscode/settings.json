@@ -1,15 +1,8 @@
 {
-    "cSpell.words": [
-        "hurryabit",
-        "Huschenbett",
-        "ianvs",
-        "mantine",
-        "mantinex",
-        "tabler",
-        "vars",
-        "webui"
-    ],
+    "cSpell.ignorePaths": ["*.json"],
+    "cSpell.ignoreRegExpList": ["^import[^;]*;"],
     "cSpell.language": "en-GB",
+    "cSpell.words": ["Huschenbett", "Mantine", "vars"],
     "[html]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
