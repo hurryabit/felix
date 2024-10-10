@@ -54,7 +54,7 @@ function syntaxToData(root: syntax.Element): [TreeNodeData[], Map<string, syntax
 }
 
 function before(loc1: syntax.SrcLoc, loc2: syntax.SrcLoc): boolean {
-    return loc1.line < loc2.line || (loc1.line == loc2.line && loc1.column <= loc2.column);
+    return loc1.line < loc2.line || (loc1.line === loc2.line && loc1.column < loc2.column);
 }
 
 function findCursor(
@@ -70,9 +70,14 @@ function findCursor(
         }
         let found: syntax.Element | undefined;
         for (const child of element.children) {
-            if (before(child.start, cursor) && before(cursor, child.end)) {
-                found = child;
+            if (before(child.end, cursor)) {
+                continue;
+            }
+            if (before(cursor, child.start)) {
                 break;
+            }
+            if (found === undefined || child.tag === "NODE") {
+                found = child;
             }
         }
         if (found === undefined) {
