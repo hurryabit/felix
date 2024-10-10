@@ -1,5 +1,5 @@
 import { RefObject, useMemo } from "react";
-import AceEditor from "react-ace";
+import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
 import "ace-builds/src-noconflict/mode-rust";
 import "ace-builds/src-noconflict/theme-github_dark";
@@ -8,6 +8,31 @@ import "ace-builds/src-noconflict/theme-github_light_default";
 import type * as wasm from "felix-wasm-bridge";
 import { vars } from "../theme";
 import * as classes from "./Editor.css";
+
+interface Span {
+    start: wasm.SrcLoc;
+    end: wasm.SrcLoc;
+}
+
+function makeAnnotation(problem: wasm.Problem): IAnnotation {
+    return {
+        row: problem.start.line,
+        column: problem.start.column,
+        text: problem.message,
+        type: problem.severity.toLowerCase() as "error",
+    };
+}
+
+function makeMarker(span: Span, className: string): IMarker {
+    return {
+        startRow: span.start.line,
+        startCol: span.start.column,
+        endRow: span.end.line,
+        endCol: span.end.column,
+        className: className,
+        type: "text",
+    };
+}
 
 type Props = {
     aceRef: RefObject<AceEditor>;
@@ -20,39 +45,17 @@ type Props = {
 export default function Editor({ aceRef, program, setProgram, problems, highlightedSpan }: Props) {
     const annotations = useMemo(
         function () {
-            return problems.map(function (problem) {
-                const { line, column } = problem.start;
-                return {
-                    row: line,
-                    column,
-                    text: problem.message,
-                    type: problem.severity.toLowerCase(),
-                };
-            });
+            return problems.map(makeAnnotation);
         },
         [problems],
     );
     const markers = useMemo(
         function () {
             const markers = problems.map(function (problem) {
-                return {
-                    startRow: problem.start.line,
-                    startCol: problem.start.column,
-                    endRow: problem.end.line,
-                    endCol: problem.end.column,
-                    className: classes.errorMarker,
-                    type: "text" as const,
-                };
+                return makeMarker(problem, classes.errorMarker);
             });
             if (highlightedSpan !== null) {
-                markers.push({
-                    startRow: highlightedSpan.start.line,
-                    startCol: highlightedSpan.start.column,
-                    endRow: highlightedSpan.end.line,
-                    endCol: highlightedSpan.end.column,
-                    className: classes.highlightMarker,
-                    type: "text" as const,
-                });
+                markers.push(makeMarker(highlightedSpan, classes.highlightMarker));
             }
             return markers;
         },
