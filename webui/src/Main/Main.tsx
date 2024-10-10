@@ -37,8 +37,9 @@ fn fib_tailrec(n) {
 export default function Main() {
     const [activeTab, setActiveTab] = useState<string | null>("parser");
     const [program, setProgram] = useDebouncedState<string>(SAMPLE_PROGRAM, 200);
+    const [cursor, setCursor] = useDebouncedState<wasm.SrcLoc | undefined>(undefined, 200);
     const [problems, setProblems] = useState<wasm.Problem[]>([]);
-    const [syntax, setSyntax] = useState<wasm.SyntaxNode>();
+    const [syntax, setSyntax] = useState<wasm.Element>();
     const editorRef = useRef<AceEditor>(null);
     const [hoveredSyntax, setHoveredSyntax] = useState<wasm.Element | null>(null);
     const highlightedSpan =
@@ -75,6 +76,7 @@ export default function Main() {
                         aceRef={editorRef}
                         program={program}
                         setProgram={setProgram}
+                        setCursor={setCursor}
                         problems={problems}
                         highlightedSpan={highlightedSpan}
                     />
@@ -87,7 +89,11 @@ export default function Main() {
                         inverted
                     >
                         <Tabs.Panel value="parser" flex="1 1 0" mih={0}>
-                            <SyntaxTree syntax={syntax} setHoveredSyntax={setHoveredSyntax} />
+                            <SyntaxTree
+                                syntax={syntax}
+                                cursor={cursor}
+                                setHoveredSyntax={setHoveredSyntax}
+                            />
                         </Tabs.Panel>
                         <Tabs.Panel value="checker" flex={1}>
                             Panel for the intermediate representation produced by the type checker.

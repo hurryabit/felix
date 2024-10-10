@@ -20,7 +20,7 @@ pub struct ParseOptions {
 #[tsify(into_wasm_abi)]
 pub struct ParseResult {
     pub problems: Vec<Problem>,
-    pub syntax: syntax::Node,
+    pub syntax: syntax::Element,
 }
 
 #[wasm_bindgen]
@@ -43,11 +43,11 @@ pub fn parse(input: &str, options: ParseOptions) -> ParseResult {
             }
         })
         .collect();
-    let syntax = syntax::Node::from_parser_node(
+    let syntax = syntax::Element::Node(syntax::Node::from_parser_node(
         result.syntax,
         String::from(""),
         options.include_trivia,
         &mapper,
-    );
+    ));
     ParseResult { problems, syntax }
 }

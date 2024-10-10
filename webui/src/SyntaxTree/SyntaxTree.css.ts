@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { globalStyle, style } from "@vanilla-extract/css";
 import { vars } from "../theme";
 
 export const syntaxKind = style({
@@ -10,4 +10,10 @@ export const syntaxKind = style({
     ":hover": {
         background: vars.colors.primaryColors.lightHover,
     },
+});
+
+export const cursed = style({});
+
+globalStyle(`${cursed} ${syntaxKind}`, {
+    background: vars.colors.green.lightHover,
 });

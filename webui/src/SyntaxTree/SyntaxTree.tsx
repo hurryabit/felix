@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IconAbc, IconChevronDown } from "@tabler/icons-react";
 import syntax from "felix-wasm-bridge";
 import { Box, Group, ScrollArea, Tree, TreeNodeData, useTree } from "@mantine/core";
@@ -6,9 +6,19 @@ import { Box, Group, ScrollArea, Tree, TreeNodeData, useTree } from "@mantine/co
 import "@mantine/code-highlight/styles.css";
 import "ace-builds/css/theme/github_light_default.css";
 
+import { useScrollIntoView } from "@mantine/hooks";
 import * as classes from "./SyntaxTree.css";
 
-function syntaxToData(topLevel: syntax.Element[]): [TreeNodeData[], Map<string, syntax.Element>] {
+function easeInOutExpo(x: number): number {
+    return x === 0
+        ? 0
+        : x === 1
+          ? 1
+          : x < 0.5
+            ? Math.pow(2, 20 * x - 10) / 2
+            : (2 - Math.pow(2, -20 * x + 10)) / 2;
+}
+function syntaxToData(root: syntax.Element): [TreeNodeData[], Map<string, syntax.Element>] {
     const elements = new Map();
 
     function goElement(element: syntax.Element): TreeNodeData {
@@ -40,23 +50,59 @@ function syntaxToData(topLevel: syntax.Element[]): [TreeNodeData[], Map<string, 
         };
     }
 
-    return [topLevel.map(goElement), elements];
+    return [[goElement(root)], elements];
+}
+
+function before(loc1: syntax.SrcLoc, loc2: syntax.SrcLoc): boolean {
+    return loc1.line < loc2.line || (loc1.line == loc2.line && loc1.column <= loc2.column);
+}
+
+function findCursor(
+    element: syntax.Element,
+    cursor: syntax.SrcLoc,
+    expand: (value: string) => void,
+): string {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        expand(element.id);
+        if (element.tag == "TOKEN") {
+            break;
+        }
+        let found: syntax.Element | undefined;
+        for (const child of element.children) {
+            if (before(child.start, cursor) && before(cursor, child.end)) {
+                found = child;
+                break;
+            }
+        }
+        if (found === undefined) {
+            break;
+        }
+        element = found;
+    }
+    return element.id;
 }
 
 type Props = {
-    syntax?: syntax.Node;
+    syntax?: syntax.Element;
+    cursor?: syntax.SrcLoc;
     setHoveredSyntax: (element: syntax.Element | null) => void;
 };
 
-export default function SyntaxTree({ syntax, setHoveredSyntax }: Props) {
+export default function SyntaxTree({ syntax, cursor, setHoveredSyntax }: Props) {
     const [data, elements] = useMemo(
         function () {
-            return syntaxToData(syntax?.children ?? []);
+            return syntax !== undefined ? syntaxToData(syntax) : [[], new Map()];
         },
         [syntax],
     );
     const tree = useTree();
     const { expand, hoveredNode } = tree;
+    const [cursed, setCursed] = useState<string>();
+    const { scrollableRef, targetRef, scrollIntoView } = useScrollIntoView<
+        HTMLDivElement,
+        HTMLDivElement
+    >({ duration: 200, easing: easeInOutExpo });
 
     // NOTE(MH): This is ugly but I don't know how to do better with the
     // current Tree API.
@@ -69,15 +115,25 @@ export default function SyntaxTree({ syntax, setHoveredSyntax }: Props) {
 
     useEffect(
         function () {
-            for (const node of data) {
-                expand(node.value);
+            let id: string | undefined;
+            if (syntax) {
+                expand(syntax.id);
+                id = cursor ? findCursor(syntax, cursor, expand) : syntax.id;
             }
+            setCursed(id);
         },
-        [expand, data],
+        [syntax, cursor, expand],
+    );
+
+    useEffect(
+        function () {
+            scrollIntoView({ alignment: "center" });
+        },
+        [cursed, scrollIntoView],
     );
 
     return (
-        <ScrollArea type="scroll" h="100%">
+        <ScrollArea type="scroll" h="100%" viewportRef={scrollableRef}>
             <Box pt="xs" pb="xs" pl="md" pr="md" className="ace-github-light-default">
                 <Tree
                     data={data}
@@ -95,7 +151,12 @@ export default function SyntaxTree({ syntax, setHoveredSyntax }: Props) {
                             ) : (
                                 <IconAbc size={16} />
                             )}
-                            {node.label}
+                            <Box
+                                className={node.value === cursed ? classes.cursed : undefined}
+                                ref={node.value === cursed ? targetRef : undefined}
+                            >
+                                {node.label}
+                            </Box>
                         </Group>
                     )}
                 />

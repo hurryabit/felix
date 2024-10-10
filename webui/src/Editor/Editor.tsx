@@ -1,4 +1,4 @@
-import { RefObject, useMemo } from "react";
+import { RefObject, useCallback, useMemo } from "react";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
 import "ace-builds/src-noconflict/mode-rust";
@@ -38,11 +38,19 @@ type Props = {
     aceRef: RefObject<AceEditor>;
     program: string;
     setProgram: (program: string) => void;
+    setCursor: (loc: wasm.SrcLoc) => void;
     problems: wasm.Problem[];
     highlightedSpan: { start: wasm.SrcLoc; end: wasm.SrcLoc } | null;
 };
 
-export default function Editor({ aceRef, program, setProgram, problems, highlightedSpan }: Props) {
+export default function Editor({
+    aceRef,
+    program,
+    setProgram,
+    setCursor,
+    problems,
+    highlightedSpan,
+}: Props) {
     const annotations = useMemo(
         function () {
             return problems.map(makeAnnotation);
@@ -62,6 +70,15 @@ export default function Editor({ aceRef, program, setProgram, problems, highligh
         [problems, highlightedSpan],
     );
 
+    const onCursorChange = useCallback(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function (value: any) {
+            const cursor = value.getCursor();
+            setCursor({ line: cursor.row, column: cursor.column });
+        },
+        [setCursor],
+    );
+
     return (
         <AceEditor
             name="editor"
@@ -71,6 +88,7 @@ export default function Editor({ aceRef, program, setProgram, problems, highligh
             width="100%"
             height="100%"
             onChange={setProgram}
+            onCursorChange={onCursorChange}
             mode="rust"
             theme="github_light_default"
             // theme="github_dark"
