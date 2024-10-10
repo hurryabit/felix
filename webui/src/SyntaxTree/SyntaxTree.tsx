@@ -57,11 +57,11 @@ function before(loc1: syntax.SrcLoc, loc2: syntax.SrcLoc): boolean {
     return loc1.line < loc2.line || (loc1.line === loc2.line && loc1.column < loc2.column);
 }
 
-function findCursor(
+function findCursed(
     element: syntax.Element,
     cursor: syntax.SrcLoc,
     expand: (value: string) => void,
-): string {
+): syntax.Element {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         expand(element.id);
@@ -85,16 +85,17 @@ function findCursor(
         }
         element = found;
     }
-    return element.id;
+    return element;
 }
 
 type Props = {
     syntax?: syntax.Element;
     cursor?: syntax.SrcLoc;
     setHoveredSyntax: (element: syntax.Element | null) => void;
+    setCursedSyntax: (element: syntax.Element | null) => void;
 };
 
-export default function SyntaxTree({ syntax, cursor, setHoveredSyntax }: Props) {
+export default function SyntaxTree({ syntax, cursor, setHoveredSyntax, setCursedSyntax }: Props) {
     const [data, elements] = useMemo(
         function () {
             return syntax !== undefined ? syntaxToData(syntax) : [[], new Map()];
@@ -103,7 +104,7 @@ export default function SyntaxTree({ syntax, cursor, setHoveredSyntax }: Props) 
     );
     const tree = useTree();
     const { expand, hoveredNode } = tree;
-    const [cursed, setCursed] = useState<string>();
+    const [cursed, setCursed] = useState<syntax.Element>();
     const { scrollableRef, targetRef, scrollIntoView } = useScrollIntoView<
         HTMLDivElement,
         HTMLDivElement
@@ -120,14 +121,15 @@ export default function SyntaxTree({ syntax, cursor, setHoveredSyntax }: Props) 
 
     useEffect(
         function () {
-            let id: string | undefined;
+            let cursed: syntax.Element | undefined;
             if (syntax) {
                 expand(syntax.id);
-                id = cursor ? findCursor(syntax, cursor, expand) : syntax.id;
+                cursed = cursor ? findCursed(syntax, cursor, expand) : syntax;
             }
-            setCursed(id);
+            setCursed(cursed);
+            setCursedSyntax(cursed ?? null);
         },
-        [syntax, cursor, expand],
+        [syntax, cursor, expand, setCursedSyntax],
     );
 
     useEffect(
@@ -157,8 +159,8 @@ export default function SyntaxTree({ syntax, cursor, setHoveredSyntax }: Props) 
                                 <IconAbc size={16} />
                             )}
                             <Box
-                                className={node.value === cursed ? classes.cursed : undefined}
-                                ref={node.value === cursed ? targetRef : undefined}
+                                className={node.value === cursed?.id ? classes.cursed : undefined}
+                                ref={node.value === cursed?.id ? targetRef : undefined}
                             >
                                 {node.label}
                             </Box>

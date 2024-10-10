@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { globalStyle, style } from "@vanilla-extract/css";
 import { rem } from "@mantine/core";
 import { vars } from "../theme";
 
@@ -8,8 +8,18 @@ export const errorMarker = style({
     borderBottom: "dotted 2px red",
 });
 
-export const highlightMarker = style({
+export const hoveredMarker = style({
     position: "absolute",
     background: vars.colors.primaryColors.lightHover,
     borderRadius: rem(2),
+});
+
+export const cursedMarker = style({
+    position: "absolute",
+    background: vars.colors.green.lightHover,
+    borderRadius: rem(2),
+});
+
+globalStyle(".ace_editor .ace_marker-layer .ace_bracket", {
+    display: "none",
 });

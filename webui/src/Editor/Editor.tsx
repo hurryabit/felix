@@ -40,7 +40,8 @@ type Props = {
     setProgram: (program: string) => void;
     setCursor: (loc: wasm.SrcLoc) => void;
     problems: wasm.Problem[];
-    highlightedSpan: { start: wasm.SrcLoc; end: wasm.SrcLoc } | null;
+    hoveredSyntax: wasm.Element | null;
+    cursedSyntax: wasm.Element | null;
 };
 
 export default function Editor({
@@ -49,7 +50,8 @@ export default function Editor({
     setProgram,
     setCursor,
     problems,
-    highlightedSpan,
+    hoveredSyntax,
+    cursedSyntax,
 }: Props) {
     const annotations = useMemo(
         function () {
@@ -62,12 +64,15 @@ export default function Editor({
             const markers = problems.map(function (problem) {
                 return makeMarker(problem, classes.errorMarker);
             });
-            if (highlightedSpan !== null) {
-                markers.push(makeMarker(highlightedSpan, classes.highlightMarker));
+            if (hoveredSyntax !== null) {
+                markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
+            }
+            if (cursedSyntax !== null) {
+                markers.push(makeMarker(cursedSyntax, classes.cursedMarker));
             }
             return markers;
         },
-        [problems, highlightedSpan],
+        [problems, hoveredSyntax, cursedSyntax],
     );
 
     const onCursorChange = useCallback(

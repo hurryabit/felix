@@ -42,8 +42,7 @@ export default function Main() {
     const [syntax, setSyntax] = useState<wasm.Element>();
     const editorRef = useRef<AceEditor>(null);
     const [hoveredSyntax, setHoveredSyntax] = useState<wasm.Element | null>(null);
-    const highlightedSpan =
-        hoveredSyntax === null ? null : { start: hoveredSyntax.start, end: hoveredSyntax.end };
+    const [cursedSyntax, setCursedSyntax] = useState<wasm.Element | null>(null);
 
     useEffect(
         function () {
@@ -78,7 +77,8 @@ export default function Main() {
                         setProgram={setProgram}
                         setCursor={setCursor}
                         problems={problems}
-                        highlightedSpan={highlightedSpan}
+                        hoveredSyntax={hoveredSyntax}
+                        cursedSyntax={cursedSyntax}
                     />
                 </div>
                 <div className={classes.outputPanel}>
@@ -93,6 +93,7 @@ export default function Main() {
                                 syntax={syntax}
                                 cursor={cursor}
                                 setHoveredSyntax={setHoveredSyntax}
+                                setCursedSyntax={setCursedSyntax}
                             />
                         </Tabs.Panel>
                         <Tabs.Panel value="checker" flex={1}>
