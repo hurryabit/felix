@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tsify_next::{declare, Tsify};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use felix_common::{Problem, Severity};
+use felix_common::Problem;
 use felix_parser::Parser;
 
 pub mod syntax;
@@ -27,27 +27,16 @@ pub struct ParseResult {
 pub fn parse(input: &str, options: ParseOptions) -> ParseResult {
     console_error_panic_hook::set_once();
     let mapper = felix_common::srcloc::Mapper::new(input);
-    let parser = Parser::new(input);
+    let parser = Parser::new(input, &mapper);
     let result = parser.run(Parser::program);
-    let problems = result
-        .errors
-        .into_iter()
-        .map(|error| {
-            let span = error.span;
-            Problem {
-                start: mapper.src_loc(span.start),
-                end: mapper.src_loc(span.end),
-                severity: Severity::Error,
-                source: error.rule,
-                message: format!("Found {}, expected {}.", error.found, error.expected),
-            }
-        })
-        .collect();
     let syntax = syntax::Element::Node(syntax::Node::from_parser_node(
         result.syntax,
         String::from(""),
         options.include_trivia,
         &mapper,
     ));
-    ParseResult { problems, syntax }
+    ParseResult {
+        problems: result.problems,
+        syntax,
+    }
 }

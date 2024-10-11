@@ -1,10 +1,12 @@
 #![cfg(test)]
 use super::*;
+use felix_common::{srcloc::Mapper, Problem};
 
 use insta::assert_snapshot;
 
 fn parse<'a>(input: &'a str) -> ParseResult {
-    let parser = Parser::new(input);
+    let mapper = Mapper::new(input);
+    let parser = Parser::new(input, &mapper);
     return parser.run(Parser::program);
 }
 
@@ -13,10 +15,20 @@ fn dump_syntax(node: syntax::Node, _include_trivia: bool) -> String {
     format!("{:#?}", node)
 }
 
-fn dump_errors(errors: &Vec<ParseError>) -> String {
+fn dump_problems(problems: &Vec<Problem>) -> String {
     let mut buffer = String::new();
-    for error in errors {
-        buffer.push_str(&format!("{:?}\n", error));
+    for problem in problems {
+        let Problem {
+            start,
+            end,
+            severity,
+            source,
+            message,
+        } = problem;
+        buffer.push_str(&format!(
+            "{:?} {:?}-{:?}: {} [{}]\n",
+            severity, start, end, message, source
+        ));
     }
     buffer
 }
@@ -27,7 +39,7 @@ fn empty() {
     assert_snapshot!(dump_syntax(result.syntax, false), @r#"
     PROGRAM@0..0
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -47,7 +59,7 @@ fn one_good_fn() {
           LBRACE@7..8 "{"
           RBRACE@8..9 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -79,7 +91,7 @@ fn two_good_fns() {
           LBRACE@17..18 "{"
           RBRACE@18..19 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -112,7 +124,7 @@ fn infix() {
             WHITESPACE@15..16 " "
           RBRACE@16..17 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -141,8 +153,8 @@ fn missing_infix() {
         WHITESPACE@13..14 " "
         RBRACE@14..15 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @r#"
-    ParseError { span: 12..13, found: IDENT, expected: EnumSet(RBRACE | EQUALS | SEMI), rule: "EXPR_BLOCK" }
+    assert_snapshot!(dump_problems(&result.problems), @r#"
+    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | SEMI. [parser/expr_block]
     "#);
 }
 
@@ -175,7 +187,7 @@ fn call() {
           WHITESPACE@14..15 " "
           RBRACE@15..16 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -203,7 +215,7 @@ fn one_tuple() {
           WHITESPACE@13..14 " "
           RBRACE@14..15 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
 #[test]
@@ -234,5 +246,5 @@ fn assign() {
           WHITESPACE@15..16 " "
           RBRACE@16..17 "}"
     "#);
-    assert_snapshot!(dump_errors(&result.errors), @"");
+    assert_snapshot!(dump_problems(&result.problems), @"");
 }

@@ -1,42 +1,37 @@
 use logos::Logos;
+use felix_common::{Problem, srcloc::Mapper};
 
 use crate::syntax::{self, NodeKind, TokenKind, TokenKindSet};
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct ParseError {
-    pub span: std::ops::Range<u32>,
-    pub found: TokenKind,
-    pub expected: TokenKindSet,
-    pub rule: String,
-}
 
 /// Stateful parser for the Rufus language.
 pub struct Parser<'a> {
     input: &'a str,
+    mapper: &'a Mapper,
     lexer: logos::Lexer<'a, TokenKind>,
     peeked: Option<TokenKind>,
     open_node_stack: Vec<NodeKind>,
     builder: rowan::GreenNodeBuilder<'a>,
-    errors: Vec<ParseError>,
+    problems: Vec<Problem>,
 }
 
-pub(crate) type Result<T> = std::result::Result<T, ParseError>;
+pub(crate) type Result<T> = std::result::Result<T, Problem>;
 
 pub struct ParseResult {
     pub syntax: syntax::Node,
-    pub errors: Vec<ParseError>,
+    pub problems: Vec<Problem>,
 }
 
 impl<'a> Parser<'a> {
     /// Create a new parser on the given input.
-    pub fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str, mapper: &'a Mapper) -> Self {
         Self {
             input,
+            mapper,
             lexer: TokenKind::lexer(input),
             peeked: None,
             open_node_stack: Vec::new(),
             builder: rowan::GreenNodeBuilder::new(),
-            errors: Vec::new(),
+            problems: Vec::new(),
         }
     }
 
@@ -45,7 +40,7 @@ impl<'a> Parser<'a> {
         let green_node = self.builder.finish();
         ParseResult {
             syntax: rowan::SyntaxNode::new_root(green_node),
-            errors: self.errors,
+            problems: self.problems,
         }
     }
 
@@ -54,21 +49,21 @@ impl<'a> Parser<'a> {
         self.builder.checkpoint()
     }
 
-    pub(crate) fn push_error(&mut self, err: ParseError) {
-        self.errors.push(err);
+    pub(crate) fn push_problem(&mut self, problem: Problem) {
+        self.problems.push(problem);
     }
 
-    pub(crate) fn error(&mut self, expected: TokenKindSet) -> ParseError {
+    pub(crate) fn error(&mut self, message: String) -> Problem {
         let span = self.lexer.span();
-        let found = self.peek();
         let node = *self.open_node_stack.last().unwrap();
         assert!(node != NodeKind::ERROR);
-        ParseError {
-            span: span.start as u32..span.end as u32,
-            found,
-            expected,
-            rule: format!("{:?}", node),
-        }
+        let source = format!("parser/{}", node.to_string().to_ascii_lowercase());
+        self.mapper.error(span.start as u32, span.end as u32, source, message)
+    }
+
+    fn unexpected_token_error(&mut self, expected: TokenKindSet) -> Problem {
+        let found = self.peek();
+        self.error(format!("Found {}, expected {}.", found, expected))
     }
 
     pub(crate) fn peek(&mut self) -> TokenKind {
@@ -99,7 +94,7 @@ impl<'a> Parser<'a> {
         if token.is(expected) {
             Ok(token)
         } else {
-            Err(self.error(expected))
+            Err(self.unexpected_token_error(expected))
         }
     }
 

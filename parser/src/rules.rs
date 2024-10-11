@@ -58,7 +58,7 @@ impl<'a> Parser<'a> {
         loop {
             match parser.expect(first) {
                 Err(err) => {
-                    parser.push_error(err);
+                    parser.push_problem(err);
                     if parser.peek().is(!first) {
                         let mut parser = parser.with_node(ERROR);
                         while parser.peek().is(!first) {
@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
                 Ok(EOF) => return,
                 Ok(_) => {
                     if let Err(err) = parser.parse_pseudo(DEFN) {
-                        parser.push_error(err);
+                        parser.push_problem(err);
                         if parser.peek().is(!first) {
                             let mut parser = parser.with_node(ERROR);
                             while parser.peek().is(!first) {

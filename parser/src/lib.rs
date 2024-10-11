@@ -3,7 +3,7 @@ mod parser;
 pub mod rules;
 pub mod syntax;
 
-pub use parser::{ParseError, ParseResult, Parser};
+pub use parser::{ParseResult, Parser};
 
 #[cfg(test)]
 mod tests;

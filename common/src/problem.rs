@@ -1,13 +1,12 @@
 use serde::Serialize;
 use tsify_next::Tsify;
 
-use crate::SrcLoc;
+use crate::{srcloc::Mapper, SrcLoc};
 
-#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
 pub enum Severity {
-    Error,
+    ERROR,
 }
 
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
@@ -18,4 +17,29 @@ pub struct Problem {
     pub severity: Severity,
     pub source: String,
     pub message: String,
+}
+
+impl Mapper {
+    pub fn problem(
+        &self,
+        start: u32,
+        end: u32,
+        severity: Severity,
+        source: String,
+        message: String,
+    ) -> Problem {
+        let start = self.src_loc(start);
+        let end = self.src_loc(end);
+        Problem {
+            start,
+            end,
+            severity,
+            source,
+            message,
+        }
+    }
+
+    pub fn error(&self, start: u32, end: u32, source: String, message: String) -> Problem {
+        self.problem(start, end, Severity::ERROR, source, message)
+    }
 }
