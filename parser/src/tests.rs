@@ -1,13 +1,19 @@
-#![cfg(test)]
 use super::*;
 use felix_common::{srcloc::Mapper, Problem};
 
 use insta::assert_snapshot;
 
-fn parse<'a>(input: &'a str) -> ParseResult {
+fn parse(input: &str) -> ParseResult {
     let mapper = Mapper::new(input);
     let parser = Parser::new(input, &mapper);
-    return parser.run(Parser::program);
+    parser.run(Parser::program)
+}
+
+fn parse_expr(input: &str) -> ParseResult {
+    let input = input.replace(" ", "");
+    let mapper = Mapper::new(&input);
+    let parser = Parser::new(&input, &mapper);
+    parser.test_pseudo(first::PseudoKind::EXPR)
 }
 
 // TODO(MH): Filter out trivia.
@@ -247,4 +253,406 @@ fn assign() {
           RBRACE@16..17 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
+}
+
+mod level_infix {
+    use super::*;
+
+    #[test]
+    fn or_or() {
+        let result = parse_expr("A || B || C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              BAR_BAR@1..3 "||"
+            EXPR_INFIX@3..7
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                BAR_BAR@4..6 "||"
+              EXPR_VAR@6..7
+                IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn or_and() {
+        let result = parse_expr("A || B && C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              BAR_BAR@1..3 "||"
+            EXPR_INFIX@3..7
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                AMPER_AMPER@4..6 "&&"
+              EXPR_VAR@6..7
+                IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn and_or() {
+        let result = parse_expr("A && B || C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_INFIX@0..4
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..3
+                AMPER_AMPER@1..3 "&&"
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+            OP_INFIX@4..6
+              BAR_BAR@4..6 "||"
+            EXPR_VAR@6..7
+              IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn and_and() {
+        let result = parse_expr("A && B && C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              AMPER_AMPER@1..3 "&&"
+            EXPR_INFIX@3..7
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                AMPER_AMPER@4..6 "&&"
+              EXPR_VAR@6..7
+                IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn and_cmp() {
+        let result = parse_expr("A && B == C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              AMPER_AMPER@1..3 "&&"
+            EXPR_INFIX@3..7
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                EQUALS_EQUALS@4..6 "=="
+              EXPR_VAR@6..7
+                IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn cmp_and() {
+        let result = parse_expr("A == B && C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_INFIX@0..4
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..3
+                EQUALS_EQUALS@1..3 "=="
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+            OP_INFIX@4..6
+              AMPER_AMPER@4..6 "&&"
+            EXPR_VAR@6..7
+              IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn cmp_cmp() {
+        let result = parse_expr("A == B != C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_INFIX@0..4
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..3
+                EQUALS_EQUALS@1..3 "=="
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+            ERROR@4..6
+              BANG_EQUALS@4..6 "!="
+            EXPR_VAR@6..7
+              IDENT@6..7 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:5-1:7: Cannot chain comparison operators EQUALS_EQUALS and BANG_EQUALS [parser/program]
+        "#);
+    }
+
+    #[test]
+    fn cmp_add() {
+        let result = parse_expr("A == B + C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..6
+          EXPR_INFIX@0..6
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              EQUALS_EQUALS@1..3 "=="
+            EXPR_INFIX@3..6
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..5
+                PLUS@4..5 "+"
+              EXPR_VAR@5..6
+                IDENT@5..6 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn add_cmp() {
+        let result = parse_expr("A + B == C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..6
+          EXPR_INFIX@0..6
+            EXPR_INFIX@0..3
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..2
+                PLUS@1..2 "+"
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+            OP_INFIX@3..5
+              EQUALS_EQUALS@3..5 "=="
+            EXPR_VAR@5..6
+              IDENT@5..6 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn add_add() {
+        let result = parse_expr("A + B - C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..5
+          EXPR_INFIX@0..5
+            EXPR_INFIX@0..3
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..2
+                PLUS@1..2 "+"
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+            OP_INFIX@3..4
+              MINUS@3..4 "-"
+            EXPR_VAR@4..5
+              IDENT@4..5 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn add_mul() {
+        let result = parse_expr("A + B * C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..5
+          EXPR_INFIX@0..5
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..2
+              PLUS@1..2 "+"
+            EXPR_INFIX@2..5
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+              OP_INFIX@3..4
+                STAR@3..4 "*"
+              EXPR_VAR@4..5
+                IDENT@4..5 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn mul_add() {
+        let result = parse_expr("A * B + C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..5
+          EXPR_INFIX@0..5
+            EXPR_INFIX@0..3
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..2
+                STAR@1..2 "*"
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+            OP_INFIX@3..4
+              PLUS@3..4 "+"
+            EXPR_VAR@4..5
+              IDENT@4..5 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn mul_mul() {
+        let result = parse_expr("A * B / C");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..5
+          EXPR_INFIX@0..5
+            EXPR_INFIX@0..3
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..2
+                STAR@1..2 "*"
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+            OP_INFIX@3..4
+              SLASH@3..4 "/"
+            EXPR_VAR@4..5
+              IDENT@4..5 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn or_or_or() {
+        let result = parse_expr("A || B || C || D");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..10
+          EXPR_INFIX@0..10
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              BAR_BAR@1..3 "||"
+            EXPR_INFIX@3..10
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                BAR_BAR@4..6 "||"
+              EXPR_INFIX@6..10
+                EXPR_VAR@6..7
+                  IDENT@6..7 "C"
+                OP_INFIX@7..9
+                  BAR_BAR@7..9 "||"
+                EXPR_VAR@9..10
+                  IDENT@9..10 "D"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn cmp_cmp_cmp() {
+        let result = parse_expr("A < B == C > D");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..8
+          EXPR_INFIX@0..8
+            EXPR_INFIX@0..6
+              EXPR_INFIX@0..3
+                EXPR_VAR@0..1
+                  IDENT@0..1 "A"
+                OP_INFIX@1..2
+                  LANGLE@1..2 "<"
+                EXPR_VAR@2..3
+                  IDENT@2..3 "B"
+              ERROR@3..5
+                EQUALS_EQUALS@3..5 "=="
+              EXPR_VAR@5..6
+                IDENT@5..6 "C"
+            ERROR@6..7
+              RANGLE@6..7 ">"
+            EXPR_VAR@7..8
+              IDENT@7..8 "D"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:4-1:6: Cannot chain comparison operators LANGLE and EQUALS_EQUALS [parser/program]
+        ERROR 1:7-1:8: Cannot chain comparison operators EQUALS_EQUALS and RANGLE [parser/program]
+        "#);
+    }
+
+    #[test]
+    fn add_add_add() {
+        let result = parse_expr("A + B + C + D");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..7
+          EXPR_INFIX@0..7
+            EXPR_INFIX@0..5
+              EXPR_INFIX@0..3
+                EXPR_VAR@0..1
+                  IDENT@0..1 "A"
+                OP_INFIX@1..2
+                  PLUS@1..2 "+"
+                EXPR_VAR@2..3
+                  IDENT@2..3 "B"
+              OP_INFIX@3..4
+                PLUS@3..4 "+"
+              EXPR_VAR@4..5
+                IDENT@4..5 "C"
+            OP_INFIX@5..6
+              PLUS@5..6 "+"
+            EXPR_VAR@6..7
+              IDENT@6..7 "D"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn or_or_err() {
+        let result = parse_expr("A || B || ?");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..6
+          EXPR_INFIX@0..6
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            OP_INFIX@1..3
+              BAR_BAR@1..3 "||"
+            EXPR_INFIX@3..6
+              EXPR_VAR@3..4
+                IDENT@3..4 "B"
+              OP_INFIX@4..6
+                BAR_BAR@4..6 "||"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        "#);
+    }
+
+    #[test]
+    fn add_add_err() {
+        let result = parse_expr("A + B + ?");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..4
+          EXPR_INFIX@0..4
+            EXPR_INFIX@0..3
+              EXPR_VAR@0..1
+                IDENT@0..1 "A"
+              OP_INFIX@1..2
+                PLUS@1..2 "+"
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+            OP_INFIX@3..4
+              PLUS@3..4 "+"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        "#);
+    }
 }

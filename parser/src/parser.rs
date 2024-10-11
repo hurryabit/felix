@@ -1,5 +1,5 @@
+use felix_common::{srcloc::Mapper, Problem};
 use logos::Logos;
-use felix_common::{Problem, srcloc::Mapper};
 
 use crate::syntax::{self, NodeKind, TokenKind, TokenKindSet};
 
@@ -44,6 +44,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn test_pseudo(mut self, pseudo: crate::first::PseudoKind) -> ParseResult {
+        let result = || -> Result<_> {
+            let mut parser = self.with_node(NodeKind::PROGRAM);
+            parser.parse_pseudo(pseudo)?;
+            parser.expect(TokenKind::EOF)
+        }();
+        if let Err(problem) = result {
+            self.push_problem(problem);
+        }
+        let green_node = self.builder.finish();
+        ParseResult {
+            syntax: rowan::SyntaxNode::new_root(green_node),
+            problems: self.problems,
+        }
+    }
+
     pub(crate) fn checkpoint(&mut self) -> rowan::Checkpoint {
         self.peek(); // Put whitespace before the checkpoint.
         self.builder.checkpoint()
@@ -58,12 +75,8 @@ impl<'a> Parser<'a> {
         let node = *self.open_node_stack.last().unwrap();
         assert!(node != NodeKind::ERROR);
         let source = format!("parser/{}", node.to_string().to_ascii_lowercase());
-        self.mapper.error(span.start as u32, span.end as u32, source, message)
-    }
-
-    fn unexpected_token_error(&mut self, expected: TokenKindSet) -> Problem {
-        let found = self.peek();
-        self.error(format!("Found {}, expected {}.", found, expected))
+        self.mapper
+            .error(span.start as u32, span.end as u32, source, message)
     }
 
     pub(crate) fn peek(&mut self) -> TokenKind {
@@ -94,7 +107,7 @@ impl<'a> Parser<'a> {
         if token.is(expected) {
             Ok(token)
         } else {
-            Err(self.unexpected_token_error(expected))
+            Err(self.error(format!("Found {}, expected {}.", token, expected)))
         }
     }
 

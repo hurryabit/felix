@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
+    pub(crate) fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
         self.expect(pseudo.first())?;
         match pseudo {
             DEFN => self.defn(),
@@ -177,16 +177,75 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // NOTE(MH): We use Pratt parsing to resolve precendence. We use matklad's
+    // trick of different binding powers on the left and right to resolve
+    // associativity. See
+    // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     fn level_infix(&mut self) -> Result<()> {
-        let checkpoint = self.checkpoint();
-        self.parse_pseudo(LEVEL_PREFIX)?;
-        if self.peek().is(INFIX_OPS) {
-            let mut parser = self.with_node_at(checkpoint, EXPR_INFIX);
-            parser.with_node(OP_INFIX).consume(INFIX_OPS)?;
-            // TODO(MH): Turn tail recursion into a loop.
-            parser.parse_pseudo(LEVEL_INFIX)?;
+        fn binding_power(op: TokenKind) -> (u32, u32) {
+            match op {
+                BAR_BAR => (15, 10),
+                AMPER_AMPER => (25, 20),
+                EQUALS_EQUALS | BANG_EQUALS | LANGLE | LANGLE_EQUALS | RANGLE | RANGLE_EQUALS => {
+                    (30, 30)
+                }
+                PLUS | MINUS => (40, 45),
+                STAR | SLASH | PERCENT => (50, 55),
+                token => unreachable!("token is not infix operator: {:?}", token),
+            }
         }
-        Ok(())
+
+        #[derive(Clone, Copy)]
+        struct StackEntry {
+            checkpoint: rowan::Checkpoint,
+            op: TokenKind,
+            right_power: u32,
+        }
+
+        let mut stack: Vec<StackEntry> = Vec::new();
+        let mut checkpoint = self.checkpoint();
+        self.parse_pseudo(LEVEL_PREFIX)?;
+
+        let res = loop {
+            let op = self.peek();
+            if !op.is(INFIX_OPS) {
+                break Ok(());
+            }
+            let (left_power, right_power) = binding_power(op);
+            let op_node = loop {
+                if let Some(top) = stack.last().copied() {
+                    if top.right_power >= left_power {
+                        checkpoint = top.checkpoint;
+                        self.with_node_at(top.checkpoint, EXPR_INFIX);
+                        stack.pop();
+                        if top.right_power > left_power {
+                            continue;
+                        }
+                        let problem = self.error(format!(
+                            "Cannot chain comparison operators {} and {}",
+                            top.op, op
+                        ));
+                        self.push_problem(problem);
+                        break ERROR;
+                    }
+                }
+                break OP_INFIX;
+            };
+            assert!(self.with_node(op_node).consume(op).is_ok());
+            stack.push(StackEntry {
+                checkpoint,
+                op,
+                right_power,
+            });
+            checkpoint = self.checkpoint();
+            if let Err(problem) = self.parse_pseudo(LEVEL_PREFIX) {
+                break Err(problem);
+            }
+        };
+        for entry in stack.into_iter().rev() {
+            self.with_node_at(entry.checkpoint, EXPR_INFIX);
+        }
+        res
     }
 
     fn level_prefix(&mut self) -> Result<()> {
