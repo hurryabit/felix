@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useMemo, useState } from "react";
+import { RefObject, useCallback, useEffect, useMemo, useState } from "react";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
 import "ace-builds/src-noconflict/mode-rust";
@@ -102,6 +102,13 @@ export default function Editor({
             return markers;
         },
         [problems, selection, hoveredSyntax, cursedSyntax],
+    );
+
+    useEffect(
+        function () {
+            aceRef.current?.editor.gotoLine(1, 0, true);
+        },
+        [aceRef],
     );
 
     const onCursorChange = useCallback(
