@@ -53,8 +53,8 @@ function syntaxToData(root: syntax.Element): [TreeNodeData[], Map<string, syntax
     return [[goElement(root)], elements];
 }
 
-function before(loc1: syntax.SrcLoc, loc2: syntax.SrcLoc): boolean {
-    return loc1.line < loc2.line || (loc1.line === loc2.line && loc1.column < loc2.column);
+function before(x: syntax.SrcLoc, y: syntax.SrcLoc): boolean {
+    return x.line < y.line || (x.line === y.line && x.column <= y.column);
 }
 
 function findCursed(
@@ -64,28 +64,20 @@ function findCursed(
 ): syntax.Element {
     // eslint-disable-next-line no-constant-condition
     while (true) {
+        if (element.tag === "TOKEN") {
+            return element;
+        }
         expand(element.id);
-        if (element.tag == "TOKEN") {
-            break;
+        const child = element.children.findLast((x) => before(x.start, cursor));
+        if (child === undefined) {
+            return element;
         }
-        let found: syntax.Element | undefined;
-        for (const child of element.children) {
-            if (before(child.end, cursor)) {
-                continue;
-            }
-            if (before(cursor, child.start)) {
-                break;
-            }
-            if (found === undefined || child.tag === "NODE") {
-                found = child;
-            }
+        if (child.tag === "NODE" && before(cursor, child.start)) {
+            expand(child.id);
+            return child;
         }
-        if (found === undefined) {
-            break;
-        }
-        element = found;
+        element = child;
     }
-    return element;
 }
 
 type Props = {
