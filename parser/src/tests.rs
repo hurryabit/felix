@@ -656,3 +656,55 @@ mod level_infix {
         "#);
     }
 }
+
+mod level_prefix {
+    use super::*;
+
+    #[test]
+    fn not() {
+        let result = parse_expr("!A");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..2
+          EXPR_PREFIX@0..2
+            OP_PREFIX@0..1
+              BANG@0..1 "!"
+            EXPR_VAR@1..2
+              IDENT@1..2 "A"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn not_not() {
+        let result = parse_expr("!!A");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..3
+          EXPR_PREFIX@0..3
+            OP_PREFIX@0..1
+              BANG@0..1 "!"
+            EXPR_PREFIX@1..3
+              OP_PREFIX@1..2
+                BANG@1..2 "!"
+              EXPR_VAR@2..3
+                IDENT@2..3 "A"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @"");
+    }
+
+    #[test]
+    fn not_not_err() {
+        let result = parse_expr("!!?");
+        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        PROGRAM@0..2
+          EXPR_PREFIX@0..2
+            OP_PREFIX@0..1
+              BANG@0..1 "!"
+            EXPR_PREFIX@1..2
+              OP_PREFIX@1..2
+                BANG@1..2 "!"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | IDENT | LIT_NAT. [parser/program]
+        "#);
+    }
+}

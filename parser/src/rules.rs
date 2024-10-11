@@ -249,14 +249,20 @@ impl<'a> Parser<'a> {
     }
 
     fn level_prefix(&mut self) -> Result<()> {
-        if self.peek().is(PREFIX_OPS) {
-            let mut parser = self.with_node(EXPR_PREFIX);
-            parser.with_node(OP_PREFIX).consume(PREFIX_OPS)?;
-            // TODO(MH): Turn tail recursion into a loop.
-            parser.parse_pseudo(LEVEL_PREFIX)
-        } else {
-            self.parse_pseudo(LEVEL_POSTFIX)
+        let mut stack: Vec<rowan::Checkpoint> = Vec::new();
+        loop {
+            let op = self.peek();
+            if !op.is(PREFIX_OPS) {
+                break;
+            }
+            stack.push(self.checkpoint());
+            assert!(self.with_node(OP_PREFIX).consume(op).is_ok());
         }
+        let res = self.parse_pseudo(LEVEL_POSTFIX);
+        for checkpoint in stack.into_iter().rev() {
+            self.with_node_at(checkpoint, EXPR_PREFIX);
+        }
+        res
     }
 
     fn level_postfix(&mut self) -> Result<()> {
