@@ -36,7 +36,7 @@ fn fib_tailrec(n) {
 
 export default function Main() {
     const [activeTab, setActiveTab] = useState<string | null>("parser");
-    const [program, setProgram] = useDebouncedState<string>(SAMPLE_PROGRAM, 200);
+    const [program, setProgram] = useDebouncedState<string>(SAMPLE_PROGRAM, 20);
     const [cursor, setCursor] = useState<wasm.SrcLoc | undefined>();
     const [problems, setProblems] = useState<wasm.Problem[]>([]);
     const [syntax, setSyntax] = useState<wasm.Element>();
@@ -46,9 +46,12 @@ export default function Main() {
 
     useEffect(
         function () {
+            const a = performance.now();
             const { problems, syntax } = wasm.parse(program, {
                 include_trivia: false,
             });
+            const b = performance.now();
+            console.debug(`Parsing took ${Math.ceil(b - a)} ms.`);
             setProblems(problems);
             setSyntax(syntax);
         },

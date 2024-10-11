@@ -68,6 +68,7 @@ function findCursed(
             return element;
         }
         expand(element.id);
+        // TODO(MH): Use binary search for large counts of children.
         const child = element.children.findLast((x) => before(x.start, cursor));
         if (child === undefined) {
             return element;
