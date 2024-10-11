@@ -110,8 +110,7 @@ pub type TokenKindSet = enumset::EnumSet<TokenKind>;
 pub type Token = rowan::SyntaxToken<super::lang::FelixLang>;
 
 pub const INFIX_OPS: TokenKindSet = enumset::enum_set!(
-    PLUS
-        | MINUS
+    PLUS | MINUS
         | STAR
         | SLASH
         | PERCENT
@@ -136,7 +135,7 @@ impl TokenKind {
 
     #[inline(always)]
     pub fn is_trivia(self) -> bool {
-        return self.is(TRIVIA);
+        self.is(TRIVIA)
     }
 }
 

@@ -63,10 +63,10 @@ impl Node {
                         mapper,
                     ))),
                     parser::Element::Token(token) => {
-                        if token.kind().is_trivia() {
-                            None
-                        } else {
+                        if include_trivia || !token.kind().is_trivia() {
                             Some(Element::Token(Token::from_parser_token(token, id, mapper)))
+                        } else {
+                            None
                         }
                     }
                 }

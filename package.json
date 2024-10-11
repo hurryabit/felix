@@ -4,6 +4,8 @@
         "build": "pnpm run build-wasm && pnpm run --dir=webui build",
         "build-wasm": "wasm-pack build wasm-bridge",
         "lint": "pnpm run --dir=webui lint",
+        "prettier": "pnpm run --dir=webui prettier",
+        "prettier:write": "pnpm run --dir=webui prettier:write",
         "preview": "pnpm run --dir=webui preview",
         "upload": "pnpm run --dir=webui upload"
     }

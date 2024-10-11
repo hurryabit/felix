@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
         if self.consume(KW_MUT | IDENT)? == KW_MUT {
             self.consume(IDENT)?;
         }
-        return Ok(());
+        Ok(())
     }
 
     fn args(&mut self) -> Result<()> {

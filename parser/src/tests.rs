@@ -21,7 +21,6 @@ fn dump_errors(errors: &Vec<ParseError>) -> String {
     buffer
 }
 
-
 #[test]
 fn empty() {
     let result = parse("");

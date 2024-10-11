@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
         ParseError {
             span: span.start as u32..span.end as u32,
             found,
-            expected: expected.into(),
+            expected,
             rule: format!("{:?}", node),
         }
     }
