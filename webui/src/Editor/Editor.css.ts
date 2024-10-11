@@ -20,6 +20,20 @@ export const cursedMarker = style({
     borderRadius: rem(2),
 });
 
+export const selectionMarker = style({
+    position: "absolute",
+    background: vars.colors.yellow.lightHover,
+    borderRadius: rem(2),
+});
+
 globalStyle(".ace_editor .ace_marker-layer .ace_bracket", {
+    display: "none",
+});
+
+globalStyle(".ace_editor .ace_marker-layer .ace_selection", {
+    display: "none",
+});
+
+globalStyle(".ace_editor .ace_marker-layer .ace_selected-word", {
     display: "none",
 });

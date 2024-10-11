@@ -1,20 +1,45 @@
-import { RefObject, useCallback, useMemo } from "react";
+import { RefObject, useCallback, useMemo, useState } from "react";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
 import "ace-builds/src-noconflict/mode-rust";
 import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
-import type * as wasm from "felix-wasm-bridge";
+import type * as syntax from "felix-wasm-bridge";
 import { vars } from "../theme";
 import * as classes from "./Editor.css";
 
-interface Span {
-    start: wasm.SrcLoc;
-    end: wasm.SrcLoc;
+interface IAcePoint {
+    row: number;
+    column: number;
 }
 
-function makeAnnotation(problem: wasm.Problem): IAnnotation {
+interface IAceRange {
+    start: IAcePoint;
+    end: IAcePoint;
+}
+
+interface IAceSelection {
+    getCursor(): IAcePoint;
+    getRange(): IAceRange;
+}
+
+type SrcLoc = syntax.SrcLoc;
+
+interface SrcSpan {
+    start: SrcLoc;
+    end: SrcLoc;
+}
+
+function pointToLoc(point: IAcePoint): SrcLoc {
+    return { line: point.row, column: point.column };
+}
+
+function rangeToSpan(range: IAceRange): SrcSpan {
+    return { start: pointToLoc(range.start), end: pointToLoc(range.end) };
+}
+
+function makeAnnotation(problem: syntax.Problem): IAnnotation {
     return {
         row: problem.start.line,
         column: problem.start.column,
@@ -23,7 +48,7 @@ function makeAnnotation(problem: wasm.Problem): IAnnotation {
     };
 }
 
-function makeMarker(span: Span, className: string): IMarker {
+function makeMarker(span: SrcSpan, className: string): IMarker {
     return {
         startRow: span.start.line,
         startCol: span.start.column,
@@ -38,10 +63,10 @@ type Props = {
     aceRef: RefObject<AceEditor>;
     program: string;
     setProgram: (program: string) => void;
-    setCursor: (loc: wasm.SrcLoc) => void;
-    problems: wasm.Problem[];
-    hoveredSyntax: wasm.Element | null;
-    cursedSyntax: wasm.Element | null;
+    setCursor: (loc: syntax.SrcLoc) => void;
+    problems: syntax.Problem[];
+    hoveredSyntax: syntax.Element | null;
+    cursedSyntax: syntax.Element | null;
 };
 
 export default function Editor({
@@ -53,6 +78,7 @@ export default function Editor({
     hoveredSyntax,
     cursedSyntax,
 }: Props) {
+    const [selection, setSelection] = useState<SrcSpan | null>(null);
     const annotations = useMemo(
         function () {
             return problems.map(makeAnnotation);
@@ -64,6 +90,9 @@ export default function Editor({
             const markers = problems.map(function (problem) {
                 return makeMarker(problem, classes.errorMarker);
             });
+            if (selection !== null) {
+                markers.push(makeMarker(selection, classes.selectionMarker));
+            }
             if (hoveredSyntax !== null) {
                 markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
             }
@@ -72,17 +101,19 @@ export default function Editor({
             }
             return markers;
         },
-        [problems, hoveredSyntax, cursedSyntax],
+        [problems, selection, hoveredSyntax, cursedSyntax],
     );
 
     const onCursorChange = useCallback(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        function (value: any) {
-            const cursor = value.getCursor();
-            setCursor({ line: cursor.row, column: cursor.column });
+        function (selection: IAceSelection) {
+            setCursor(pointToLoc(selection.getCursor()));
         },
         [setCursor],
     );
+
+    const onSelectionChange = useCallback(function (selection: IAceSelection) {
+        setSelection(rangeToSpan(selection.getRange()));
+    }, []);
 
     return (
         <AceEditor
@@ -94,6 +125,7 @@ export default function Editor({
             height="100%"
             onChange={setProgram}
             onCursorChange={onCursorChange}
+            onSelectionChange={onSelectionChange}
             mode="rust"
             theme="github_light_default"
             // theme="github_dark"
