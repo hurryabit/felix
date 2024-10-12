@@ -1,7 +1,7 @@
 use super::*;
 use felix_common::{srcloc::Mapper, Problem};
 
-use insta::assert_snapshot;
+use insta::{assert_snapshot, assert_debug_snapshot};
 
 fn parse(input: &str) -> ParseResult {
     let mapper = Mapper::new(input);
@@ -22,11 +22,6 @@ fn parse_expr(input: &str) -> ParseResult {
     let mapper = Mapper::new(&input);
     let parser = Parser::new(&input, &mapper);
     parser.run(expr)
-}
-
-// TODO(MH): Filter out trivia.
-fn dump_syntax(node: syntax::Node, _include_trivia: bool) -> String {
-    format!("{:#?}", node)
 }
 
 fn dump_problems(problems: &Vec<Problem>) -> String {
@@ -77,7 +72,7 @@ fn webui_sample() {
     }
     "#,
     );
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..504
       WHITESPACE@0..5 "\n    "
       COMMENT@5..40 "// Recursive version  ..."
@@ -319,7 +314,7 @@ fn webui_sample() {
 #[test]
 fn empty() {
     let result = parse("");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..0
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
@@ -328,7 +323,7 @@ fn empty() {
 #[test]
 fn one_good_fn() {
     let result = parse("fn f() {}");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..9
       DEFN_FN@0..9
         KW_FN@0..2 "fn"
@@ -348,7 +343,7 @@ fn one_good_fn() {
 #[test]
 fn two_good_fns() {
     let result = parse("fn f() {} fn g() {}");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..19
       DEFN_FN@0..9
         KW_FN@0..2 "fn"
@@ -380,7 +375,7 @@ fn two_good_fns() {
 #[test]
 fn one_good_fn_between_errors() {
     let result = parse(" ? fn f() {} ? ");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..15
       WHITESPACE@0..1 " "
       ERROR@1..2
@@ -411,7 +406,7 @@ fn one_good_fn_between_errors() {
 #[test]
 fn infix() {
     let result = parse("fn f(x) { x + x }");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..17
       DEFN_FN@0..17
         KW_FN@0..2 "fn"
@@ -444,7 +439,7 @@ fn infix() {
 #[test]
 fn missing_infix() {
     let result = parse("fn f(x) { x x }");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..15
       DEFN_FN@0..11
         KW_FN@0..2 "fn"
@@ -475,7 +470,7 @@ fn missing_infix() {
 #[test]
 fn call() {
     let result = parse("fn f(x) { f(x) }");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..16
       DEFN_FN@0..16
         KW_FN@0..2 "fn"
@@ -507,7 +502,7 @@ fn call() {
 #[test]
 fn one_tuple() {
     let result = parse("fn f() { (1,) }");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..15
       DEFN_FN@0..15
         KW_FN@0..2 "fn"
@@ -535,7 +530,7 @@ fn one_tuple() {
 #[test]
 fn assign() {
     let result = parse("fn f() { x = 1; }");
-    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..17
       DEFN_FN@0..17
         KW_FN@0..2 "fn"
@@ -569,7 +564,7 @@ mod level_infix {
     #[test]
     fn or_or() {
         let result = parse_expr("A || B || C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_VAR@0..1
@@ -590,7 +585,7 @@ mod level_infix {
     #[test]
     fn or_and() {
         let result = parse_expr("A || B && C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_VAR@0..1
@@ -611,7 +606,7 @@ mod level_infix {
     #[test]
     fn and_or() {
         let result = parse_expr("A && B || C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_INFIX@0..4
@@ -632,7 +627,7 @@ mod level_infix {
     #[test]
     fn and_and() {
         let result = parse_expr("A && B && C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_VAR@0..1
@@ -653,7 +648,7 @@ mod level_infix {
     #[test]
     fn and_cmp() {
         let result = parse_expr("A && B == C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_VAR@0..1
@@ -674,7 +669,7 @@ mod level_infix {
     #[test]
     fn cmp_and() {
         let result = parse_expr("A == B && C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_INFIX@0..4
@@ -695,7 +690,7 @@ mod level_infix {
     #[test]
     fn cmp_cmp() {
         let result = parse_expr("A == B != C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_INFIX@0..4
@@ -718,7 +713,7 @@ mod level_infix {
     #[test]
     fn cmp_add() {
         let result = parse_expr("A == B + C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..6
           EXPR_INFIX@0..6
             EXPR_VAR@0..1
@@ -739,7 +734,7 @@ mod level_infix {
     #[test]
     fn add_cmp() {
         let result = parse_expr("A + B == C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..6
           EXPR_INFIX@0..6
             EXPR_INFIX@0..3
@@ -760,7 +755,7 @@ mod level_infix {
     #[test]
     fn add_add() {
         let result = parse_expr("A + B - C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..5
             EXPR_INFIX@0..3
@@ -781,7 +776,7 @@ mod level_infix {
     #[test]
     fn add_mul() {
         let result = parse_expr("A + B * C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..5
             EXPR_VAR@0..1
@@ -802,7 +797,7 @@ mod level_infix {
     #[test]
     fn mul_add() {
         let result = parse_expr("A * B + C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..5
             EXPR_INFIX@0..3
@@ -823,7 +818,7 @@ mod level_infix {
     #[test]
     fn mul_mul() {
         let result = parse_expr("A * B / C");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..5
             EXPR_INFIX@0..3
@@ -844,7 +839,7 @@ mod level_infix {
     #[test]
     fn or_or_or() {
         let result = parse_expr("A || B || C || D");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..10
           EXPR_INFIX@0..10
             EXPR_VAR@0..1
@@ -870,7 +865,7 @@ mod level_infix {
     #[test]
     fn cmp_cmp_cmp() {
         let result = parse_expr("A < B == C > D");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..8
           EXPR_INFIX@0..8
             EXPR_INFIX@0..6
@@ -899,7 +894,7 @@ mod level_infix {
     #[test]
     fn add_add_add() {
         let result = parse_expr("A + B + C + D");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..7
             EXPR_INFIX@0..5
@@ -925,7 +920,7 @@ mod level_infix {
     #[test]
     fn or_or_err() {
         let result = parse_expr("A || B || ?");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..6
             EXPR_VAR@0..1
@@ -948,7 +943,7 @@ mod level_infix {
     #[test]
     fn add_add_err() {
         let result = parse_expr("A + B + ?");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..4
             EXPR_INFIX@0..3
@@ -975,7 +970,7 @@ mod level_prefix {
     #[test]
     fn not() {
         let result = parse_expr("!A");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..2
           EXPR_PREFIX@0..2
             OP_PREFIX@0..1
@@ -989,7 +984,7 @@ mod level_prefix {
     #[test]
     fn not_not() {
         let result = parse_expr("!!A");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..3
           EXPR_PREFIX@0..3
             OP_PREFIX@0..1
@@ -1006,7 +1001,7 @@ mod level_prefix {
     #[test]
     fn not_not_err() {
         let result = parse_expr("!!?");
-        assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+        assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..3
           EXPR_PREFIX@0..2
             OP_PREFIX@0..1
