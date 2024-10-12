@@ -40,6 +40,274 @@ fn dump_problems(problems: &Vec<Problem>) -> String {
 }
 
 #[test]
+fn webui_sample() {
+    let result = parse(r#"
+    // Recursive version of Fibonacci.
+    fn fib_rec(n) {
+        if n <= 1 {
+            n
+        } else {
+            fib_rec(n-1) + fib_rec(n-1)
+        }
+    }
+
+    // Loop-via-tail-recusrsion version of Fibonacci.
+    fn fib_tailrec(n) {
+        let mut a = 0;
+        let mut b = 1;
+        let rec go = |n| {
+            if n > 0 {
+                let c = b;
+                b = a + b;
+                a = c;
+                go(n-1);
+            }
+        };
+        go(n);
+        a
+    }
+    "#);
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..504
+      WHITESPACE@0..5 "\n    "
+      COMMENT@5..40 "// Recursive version  ..."
+      WHITESPACE@40..44 "    "
+      DEFN_FN@44..166
+        KW_FN@44..46 "fn"
+        WHITESPACE@46..47 " "
+        IDENT@47..54 "fib_rec"
+        PARAMS_FN@54..57
+          LPAREN@54..55 "("
+          BINDER@55..56
+            IDENT@55..56 "n"
+          RPAREN@56..57 ")"
+        WHITESPACE@57..58 " "
+        EXPR_BLOCK@58..166
+          LBRACE@58..59 "{"
+          WHITESPACE@59..68 "\n        "
+          STMT_IF@68..160
+            KW_IF@68..70 "if"
+            WHITESPACE@70..71 " "
+            EXPR_INFIX@71..78
+              EXPR_VAR@71..72
+                IDENT@71..72 "n"
+              WHITESPACE@72..73 " "
+              OP_INFIX@73..75
+                LANGLE_EQUALS@73..75 "<="
+              WHITESPACE@75..76 " "
+              EXPR_LIT@76..77
+                LIT_NAT@76..77 "1"
+              WHITESPACE@77..78 " "
+            EXPR_BLOCK@78..103
+              LBRACE@78..79 "{"
+              WHITESPACE@79..92 "\n            "
+              EXPR_VAR@92..93
+                IDENT@92..93 "n"
+              WHITESPACE@93..102 "\n        "
+              RBRACE@102..103 "}"
+            WHITESPACE@103..104 " "
+            KW_ELSE@104..108 "else"
+            WHITESPACE@108..109 " "
+            EXPR_BLOCK@109..160
+              LBRACE@109..110 "{"
+              WHITESPACE@110..123 "\n            "
+              EXPR_INFIX@123..159
+                EXPR_CALL@123..135
+                  EXPR_VAR@123..130
+                    IDENT@123..130 "fib_rec"
+                  ARGS@130..135
+                    LPAREN@130..131 "("
+                    EXPR_INFIX@131..134
+                      EXPR_VAR@131..132
+                        IDENT@131..132 "n"
+                      OP_INFIX@132..133
+                        MINUS@132..133 "-"
+                      EXPR_LIT@133..134
+                        LIT_NAT@133..134 "1"
+                    RPAREN@134..135 ")"
+                WHITESPACE@135..136 " "
+                OP_INFIX@136..137
+                  PLUS@136..137 "+"
+                WHITESPACE@137..138 " "
+                EXPR_CALL@138..150
+                  EXPR_VAR@138..145
+                    IDENT@138..145 "fib_rec"
+                  ARGS@145..150
+                    LPAREN@145..146 "("
+                    EXPR_INFIX@146..149
+                      EXPR_VAR@146..147
+                        IDENT@146..147 "n"
+                      OP_INFIX@147..148
+                        MINUS@147..148 "-"
+                      EXPR_LIT@148..149
+                        LIT_NAT@148..149 "1"
+                    RPAREN@149..150 ")"
+                WHITESPACE@150..159 "\n        "
+              RBRACE@159..160 "}"
+          WHITESPACE@160..165 "\n    "
+          RBRACE@165..166 "}"
+      WHITESPACE@166..172 "\n\n    "
+      COMMENT@172..222 "// Loop-via-tail-recu ..."
+      WHITESPACE@222..226 "    "
+      DEFN_FN@226..499
+        KW_FN@226..228 "fn"
+        WHITESPACE@228..229 " "
+        IDENT@229..240 "fib_tailrec"
+        PARAMS_FN@240..243
+          LPAREN@240..241 "("
+          BINDER@241..242
+            IDENT@241..242 "n"
+          RPAREN@242..243 ")"
+        WHITESPACE@243..244 " "
+        EXPR_BLOCK@244..499
+          LBRACE@244..245 "{"
+          WHITESPACE@245..254 "\n        "
+          STMT_LET@254..268
+            KW_LET@254..257 "let"
+            WHITESPACE@257..258 " "
+            BINDER@258..263
+              KW_MUT@258..261 "mut"
+              WHITESPACE@261..262 " "
+              IDENT@262..263 "a"
+            WHITESPACE@263..264 " "
+            EQUALS@264..265 "="
+            WHITESPACE@265..266 " "
+            EXPR_LIT@266..267
+              LIT_NAT@266..267 "0"
+            SEMI@267..268 ";"
+          WHITESPACE@268..277 "\n        "
+          STMT_LET@277..291
+            KW_LET@277..280 "let"
+            WHITESPACE@280..281 " "
+            BINDER@281..286
+              KW_MUT@281..284 "mut"
+              WHITESPACE@284..285 " "
+              IDENT@285..286 "b"
+            WHITESPACE@286..287 " "
+            EQUALS@287..288 "="
+            WHITESPACE@288..289 " "
+            EXPR_LIT@289..290
+              LIT_NAT@289..290 "1"
+            SEMI@290..291 ";"
+          WHITESPACE@291..300 "\n        "
+          STMT_LET@300..468
+            KW_LET@300..303 "let"
+            WHITESPACE@303..304 " "
+            KW_REC@304..307 "rec"
+            WHITESPACE@307..308 " "
+            BINDER@308..310
+              IDENT@308..310 "go"
+            WHITESPACE@310..311 " "
+            EQUALS@311..312 "="
+            WHITESPACE@312..313 " "
+            EXPR_CLOSURE@313..467
+              PARAMS_CLOSURE@313..316
+                BAR@313..314 "|"
+                BINDER@314..315
+                  IDENT@314..315 "n"
+                BAR@315..316 "|"
+              WHITESPACE@316..317 " "
+              EXPR_BLOCK@317..467
+                LBRACE@317..318 "{"
+                WHITESPACE@318..331 "\n            "
+                STMT_IF@331..466
+                  KW_IF@331..333 "if"
+                  WHITESPACE@333..334 " "
+                  EXPR_INFIX@334..340
+                    EXPR_VAR@334..335
+                      IDENT@334..335 "n"
+                    WHITESPACE@335..336 " "
+                    OP_INFIX@336..337
+                      RANGLE@336..337 ">"
+                    WHITESPACE@337..338 " "
+                    EXPR_LIT@338..339
+                      LIT_NAT@338..339 "0"
+                    WHITESPACE@339..340 " "
+                  EXPR_BLOCK@340..457
+                    LBRACE@340..341 "{"
+                    WHITESPACE@341..358 "\n                "
+                    STMT_LET@358..368
+                      KW_LET@358..361 "let"
+                      WHITESPACE@361..362 " "
+                      BINDER@362..363
+                        IDENT@362..363 "c"
+                      WHITESPACE@363..364 " "
+                      EQUALS@364..365 "="
+                      WHITESPACE@365..366 " "
+                      EXPR_VAR@366..367
+                        IDENT@366..367 "b"
+                      SEMI@367..368 ";"
+                    WHITESPACE@368..385 "\n                "
+                    STMT_ASSIGN@385..395
+                      EXPR_VAR@385..386
+                        IDENT@385..386 "b"
+                      WHITESPACE@386..387 " "
+                      EQUALS@387..388 "="
+                      WHITESPACE@388..389 " "
+                      EXPR_INFIX@389..394
+                        EXPR_VAR@389..390
+                          IDENT@389..390 "a"
+                        WHITESPACE@390..391 " "
+                        OP_INFIX@391..392
+                          PLUS@391..392 "+"
+                        WHITESPACE@392..393 " "
+                        EXPR_VAR@393..394
+                          IDENT@393..394 "b"
+                      SEMI@394..395 ";"
+                    WHITESPACE@395..412 "\n                "
+                    STMT_ASSIGN@412..418
+                      EXPR_VAR@412..413
+                        IDENT@412..413 "a"
+                      WHITESPACE@413..414 " "
+                      EQUALS@414..415 "="
+                      WHITESPACE@415..416 " "
+                      EXPR_VAR@416..417
+                        IDENT@416..417 "c"
+                      SEMI@417..418 ";"
+                    WHITESPACE@418..435 "\n                "
+                    STMT_EXPR@435..443
+                      EXPR_CALL@435..442
+                        EXPR_VAR@435..437
+                          IDENT@435..437 "go"
+                        ARGS@437..442
+                          LPAREN@437..438 "("
+                          EXPR_INFIX@438..441
+                            EXPR_VAR@438..439
+                              IDENT@438..439 "n"
+                            OP_INFIX@439..440
+                              MINUS@439..440 "-"
+                            EXPR_LIT@440..441
+                              LIT_NAT@440..441 "1"
+                          RPAREN@441..442 ")"
+                      SEMI@442..443 ";"
+                    WHITESPACE@443..456 "\n            "
+                    RBRACE@456..457 "}"
+                  WHITESPACE@457..466 "\n        "
+                RBRACE@466..467 "}"
+            SEMI@467..468 ";"
+          WHITESPACE@468..477 "\n        "
+          STMT_EXPR@477..483
+            EXPR_CALL@477..482
+              EXPR_VAR@477..479
+                IDENT@477..479 "go"
+              ARGS@479..482
+                LPAREN@479..480 "("
+                EXPR_VAR@480..481
+                  IDENT@480..481 "n"
+                RPAREN@481..482 ")"
+            SEMI@482..483 ";"
+          WHITESPACE@483..492 "\n        "
+          EXPR_VAR@492..493
+            IDENT@492..493 "a"
+          WHITESPACE@493..498 "\n    "
+          RBRACE@498..499 "}"
+      WHITESPACE@499..504 "\n    "
+    "#);
+    assert_snapshot!(dump_problems(&result.problems), @"");
+}
+
+
+#[test]
 fn empty() {
     let result = parse("");
     assert_snapshot!(dump_syntax(result.syntax, false), @r#"
