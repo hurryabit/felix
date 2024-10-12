@@ -9,7 +9,6 @@ use TokenKind::*;
 
 impl<'a> Parser<'a> {
     fn parse(&mut self, node: NodeKind) -> Result<()> {
-        self.expect(node.first())?;
         let mut parser = self.with_node(node);
         match node {
             PROGRAM => unreachable!(),
@@ -40,7 +39,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
-        self.expect(pseudo.first())?;
         match pseudo {
             DEFN => self.defn(),
             STMT => unreachable!(),
@@ -64,9 +62,9 @@ impl<'a> Parser<'a> {
     }
 
     fn defn(&mut self) -> Result<()> {
-        match self.expect(DEFN.first())? {
+        match self.peek() {
             KW_FN => self.parse(DEFN_FN),
-            _ => unreachable!(),
+            token => Err(self.expect_error(token, DEFN.first())),
         }
     }
 
@@ -80,29 +78,35 @@ impl<'a> Parser<'a> {
     fn expr_block(&mut self) -> Result<()> {
         self.consume(LBRACE)?;
         loop {
-            match self.expect(RBRACE | STMT.first() | EXPR.first())? {
+            match self.peek() {
                 RBRACE => {
-                    self.consume(RBRACE)?;
+                    self.consume_any();
                     return Ok(());
                 }
                 KW_LET => self.parse(STMT_LET)?,
                 KW_IF => self.parse(STMT_IF)?,
-                _ => {
+                token if token.starts(EXPR) => {
                     let checkpoint = self.checkpoint();
                     self.parse_pseudo(EXPR)?;
-                    match self.consume(EQUALS | SEMI | RBRACE)? {
+                    match self.peek() {
                         EQUALS => {
+                            self.consume_any();
                             let mut parser = self.with_node_at(checkpoint, STMT_ASSIGN);
                             parser.parse_pseudo(EXPR)?;
                             parser.consume(SEMI)?;
                         }
                         SEMI => {
+                            self.consume_any();
                             self.with_node_at(checkpoint, STMT_EXPR);
                         }
-                        RBRACE => return Ok(()),
-                        _ => unreachable!(),
+                        RBRACE => {
+                            self.consume_any();
+                            return Ok(());
+                        }
+                        token => return Err(self.expect_error(token, EQUALS | SEMI | RBRACE)),
                     }
                 }
+                token => return Err(self.expect_error(token, RBRACE | STMT.first() | EXPR.first())),
             }
         }
     }
@@ -111,20 +115,27 @@ impl<'a> Parser<'a> {
         self.consume(KW_IF)?;
         self.parse_pseudo(EXPR)?;
         self.parse(EXPR_BLOCK)?;
-        if self.consume(KW_ELSE).is_err() {
+        // TODO(MH): We get a better error message if we know the folloe set.
+        if self.peek() != KW_ELSE {
             return Ok(());
         }
-        if self.expect(KW_IF | LBRACE)? == KW_IF {
-            self.parse(STMT_IF)
-        } else {
-            self.parse(EXPR_BLOCK)
+        self.consume_any();
+        match self.peek() {
+            // TODO(MH): Turn the tail recursion into a loop?
+            KW_IF => self.parse(STMT_IF),
+            LBRACE => self.parse(EXPR_BLOCK),
+            token => Err(self.expect_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
         }
     }
 
     fn stmt_let(&mut self) -> Result<()> {
         self.consume(KW_LET)?;
-        if self.expect(KW_REC | BINDER.first())? == KW_REC {
-            self.consume(KW_REC)?;
+        match self.peek() {
+            KW_REC => {
+                self.consume_any();
+            }
+            token if token.starts(BINDER) => {}
+            token => return Err(self.expect_error(token, KW_REC | BINDER.first())),
         }
         self.parse(BINDER)?;
         self.consume(EQUALS)?;
@@ -137,7 +148,8 @@ impl<'a> Parser<'a> {
         match self.peek() {
             BAR => self.parse(EXPR_CLOSURE),
             KW_IF => self.parse(EXPR_IF),
-            _ => self.parse_pseudo(LEVEL_INFIX),
+            token if token.starts(LEVEL_INFIX) => self.parse_pseudo(LEVEL_INFIX),
+            token => Err(self.expect_error(token, EXPR.first())),
         }
     }
 
@@ -151,10 +163,10 @@ impl<'a> Parser<'a> {
         self.parse_pseudo(EXPR)?;
         self.parse(EXPR_BLOCK)?;
         self.consume(KW_ELSE)?;
-        if self.expect(KW_IF | LBRACE)? == KW_IF {
-            self.parse(EXPR_IF)
-        } else {
-            self.parse(EXPR_BLOCK)
+        match self.peek() {
+            KW_IF => self.parse(EXPR_IF),
+            LBRACE => self.parse(EXPR_BLOCK),
+            token => Err(self.expect_error(token, KW_IF | LBRACE)),
         }
     }
 
@@ -231,15 +243,17 @@ impl<'a> Parser<'a> {
 
     fn level_prefix(&mut self) -> Result<()> {
         let mut stack: Vec<rowan::Checkpoint> = Vec::new();
-        loop {
-            let op = self.peek();
-            if !op.is(PREFIX_OPS) {
-                break;
+        let res = loop {
+            let token = self.peek();
+            if token.is(PREFIX_OPS) {
+                stack.push(self.checkpoint());
+                self.with_node(OP_PREFIX).consume_any();
+            } else if token.starts(LEVEL_POSTFIX) {
+                break self.parse_pseudo(LEVEL_POSTFIX);
+            } else {
+                break Err(self.expect_error(token, LEVEL_PREFIX.first()));
             }
-            stack.push(self.checkpoint());
-            assert!(self.with_node(OP_PREFIX).consume(op).is_ok());
-        }
-        let res = self.parse_pseudo(LEVEL_POSTFIX);
+        };
         for checkpoint in stack.into_iter().rev() {
             self.with_node_at(checkpoint, EXPR_PREFIX);
         }
@@ -270,36 +284,38 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             LBRACE => self.parse(EXPR_BLOCK),
-            LPAREN => {
-                let checkpoint = self.checkpoint();
-                self.consume(LPAREN)?;
-                if self.expect(RPAREN | EXPR.first())? == RPAREN {
-                    self.with_node_at(checkpoint, EXPR_TUPLE).consume(RPAREN)?;
-                    return Ok(());
-                }
-                self.parse_pseudo(EXPR)?;
-                if self.expect(COMMA | RPAREN)? == RPAREN {
-                    self.with_node_at(checkpoint, EXPR_PAREN).consume(RPAREN)?;
-                    return Ok(());
-                }
-                let mut parser = self.with_node_at(checkpoint, EXPR_TUPLE);
-                parser.consume(COMMA)?;
-                if parser.expect(EXPR.first() | RPAREN)? == RPAREN {
-                    parser.consume(RPAREN)?;
-                    return Ok(());
-                }
-                loop {
-                    parser.parse_pseudo(EXPR)?;
-                    if parser.consume(COMMA | RPAREN)? == RPAREN {
-                        return Ok(());
-                    }
-                }
-            }
+            LPAREN => self.expr_paren_or_tuple(),
             token if token.is(LITERALS) => {
                 self.with_node(EXPR_LIT).consume(LITERALS)?;
                 Ok(())
             }
-            token => unreachable!("invalid first token in level_atom: {:?}", token),
+            token => Err(self.expect_error(token, LEVEL_ATOM.first())),
+        }
+    }
+
+    fn expr_paren_or_tuple(&mut self) -> Result<()> {
+        let checkpoint = self.checkpoint();
+        self.consume(LPAREN)?;
+        if self.expect(RPAREN | EXPR.first())? == RPAREN {
+            self.with_node_at(checkpoint, EXPR_TUPLE).consume_any();
+            return Ok(());
+        }
+        self.parse_pseudo(EXPR)?;
+        if self.expect(RPAREN | COMMA)? == RPAREN {
+            self.with_node_at(checkpoint, EXPR_PAREN).consume_any();
+            return Ok(());
+        }
+        let mut parser = self.with_node_at(checkpoint, EXPR_TUPLE);
+        parser.consume(COMMA)?;
+        if parser.expect(RPAREN | EXPR.first())? == RPAREN {
+            parser.consume_any();
+            return Ok(());
+        }
+        loop {
+            parser.parse_pseudo(EXPR)?;
+            if parser.consume(COMMA | RPAREN)? == RPAREN {
+                return Ok(());
+            }
         }
     }
 
@@ -338,3 +354,15 @@ impl<'a> Parser<'a> {
         }
     }
 }
+
+// Idea for testing first sets:
+// 1. For every token T in X.first(), check that parse(X) fails at the
+//    Unknown in the token sequence [T, Unknown].
+// 2. For every token T not in X.first(), check that parse(X) fails at
+//    the T in the token sequence [T].
+// The spans in problems should help identify where a parser failed.
+// For this to make sense, the implementation of parse(X) should not
+// by calling self.expect(X.first()) but rather check for what it actually
+// needs.
+// This idea can be extended for nodes like EXPR_BLOCK where the second
+// token is more interesting.

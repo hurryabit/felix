@@ -92,14 +92,39 @@ impl<'a> Parser<'a> {
         token
     }
 
+    pub(crate) fn expect_error(
+        &mut self,
+        token: TokenKind,
+        expected: impl Into<TokenKindSet>,
+    ) -> Problem {
+        self.error(format!("Found {}, expected {}.", token, expected.into()))
+    }
+
     pub(crate) fn expect(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
         let expected = expected.into();
         let token = self.peek();
         if token.is(expected) {
             Ok(token)
         } else {
-            Err(self.error(format!("Found {}, expected {}.", token, expected)))
+            Err(self.expect_error(token, expected))
         }
+    }
+
+    pub(crate) fn consume_any(&mut self) -> TokenKind {
+        let token = self.peek();
+        if token == TokenKind::EOF {
+            panic!("consuming end-of-file");
+        }
+        self.commit_trivia();
+        self.builder
+            .token(token.into(), &self.input[self.lexer.span()]);
+        self.peeked = None;
+        token
+    }
+
+    pub(crate) fn consume(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
+        self.expect(expected)?;
+        Ok(self.consume_any())
     }
 
     /// Skip tokens until a one from the expected set or EOF is found. This function is
@@ -108,31 +133,14 @@ impl<'a> Parser<'a> {
     /// consumed but returned.
     pub(crate) fn skip_until(&mut self, expected: impl Into<TokenKindSet>) -> TokenKind {
         let expected = expected.into() | EOF;
-        let mut token = self.peek();
-        if token.is(expected) {
-            return token;
+        if self.peek().is(expected) {
+            return self.peek();
         }
         let mut parser = self.with_node(ERROR);
-        loop {
-            assert!(parser.consume(token).is_ok());
-            token = parser.peek();
-            if token.is(expected) {
-                return token;
-            }
+        while !parser.peek().is(expected) {
+            parser.consume_any();
         }
-    }
-
-    pub(crate) fn consume(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
-        let expected = expected.into();
-        let token = self.expect(expected)?;
-        if token == TokenKind::EOF {
-            panic!("consume end-of-file");
-        }
-        self.commit_trivia();
-        self.builder
-            .token(token.into(), &self.input[self.lexer.span()]);
-        self.peeked = None;
-        Ok(token)
+        parser.peek()
     }
 
     /// Return a checkpoint for usage with `open_node_at` and `with_node_at`.

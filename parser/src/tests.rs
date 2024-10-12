@@ -1013,7 +1013,7 @@ mod level_prefix {
             UNKNOWN@2..3 "?"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 }

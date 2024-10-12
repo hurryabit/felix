@@ -40,6 +40,12 @@ pub(crate) trait First {
     fn first(self) -> TokenKindSet;
 }
 
+impl TokenKind {
+    pub(crate) fn starts(self, item: impl First) -> bool {
+        self.is(item.first())
+    }
+}
+
 impl First for TokenKind {
     fn first(self) -> TokenKindSet {
         TokenKindSet::only(self)
