@@ -126,14 +126,16 @@ impl<'a> Parser<'a> {
         Ok(token)
     }
 
-    pub(crate) fn with_immediate_node<'b>(&'b mut self, node: NodeKind) -> NodeScope<'a, 'b> {
-        NodeScope::new(self, node)
+    pub(crate) fn with_immediate_node<'b>(&'b mut self, node: NodeKind) -> Scope<'a, 'b> {
+        self.open_node_stack.push(node);
+        self.builder.start_node(node.into());
+        Scope::new(self, Self::close_node)
     }
 
-    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> NodeScope<'a, 'b> {
+    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> Scope<'a, 'b> {
         self.peek();
         self.commit_trivia();
-        NodeScope::new(self, node)
+        self.with_immediate_node(node)
     }
 
     pub(crate) fn checkpoint(&mut self) -> rowan::Checkpoint {
@@ -146,41 +148,36 @@ impl<'a> Parser<'a> {
         &'b mut self,
         checkpoint: rowan::Checkpoint,
         node: NodeKind,
-    ) -> NodeScope<'a, 'b> {
-        NodeScope::new_at_checkpoint(self, checkpoint, node)
+    ) -> Scope<'a, 'b> {
+        self.open_node_stack.push(node);
+        self.builder.start_node_at(checkpoint, node.into());
+        Scope::new(self, Self::close_node)
+    }
+
+    fn close_node(parser: &mut Parser) {
+        parser.builder.finish_node();
+        assert!(parser.open_node_stack.pop().is_some());
     }
 }
 
-pub struct NodeScope<'a, 'b> {
+pub struct Scope<'a, 'b> {
     parser: &'b mut Parser<'a>,
+    drop_fn: fn(&mut Parser),
 }
 
-impl<'a, 'b> NodeScope<'a, 'b> {
-    fn new(parser: &'b mut Parser<'a>, node: NodeKind) -> Self {
-        parser.open_node_stack.push(node);
-        parser.builder.start_node(node.into());
-        Self { parser }
-    }
-
-    fn new_at_checkpoint(
-        parser: &'b mut Parser<'a>,
-        checkpoint: rowan::Checkpoint,
-        node: NodeKind,
-    ) -> Self {
-        parser.open_node_stack.push(node);
-        parser.builder.start_node_at(checkpoint, node.into());
-        Self { parser }
+impl<'a, 'b> Scope<'a, 'b> {
+    fn new(parser: &'b mut Parser<'a>, drop_fn: fn(&mut Parser)) -> Self {
+        Self { parser, drop_fn }
     }
 }
 
-impl<'a, 'b> Drop for NodeScope<'a, 'b> {
+impl<'a, 'b> Drop for Scope<'a, 'b> {
     fn drop(&mut self) {
-        self.parser.builder.finish_node();
-        assert!(self.parser.open_node_stack.pop().is_some());
+        (self.drop_fn)(self.parser);
     }
 }
 
-impl<'a, 'b> std::ops::Deref for NodeScope<'a, 'b> {
+impl<'a, 'b> std::ops::Deref for Scope<'a, 'b> {
     type Target = Parser<'a>;
 
     fn deref(&self) -> &Self::Target {
@@ -188,7 +185,7 @@ impl<'a, 'b> std::ops::Deref for NodeScope<'a, 'b> {
     }
 }
 
-impl<'a, 'b> std::ops::DerefMut for NodeScope<'a, 'b> {
+impl<'a, 'b> std::ops::DerefMut for Scope<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.parser
     }
