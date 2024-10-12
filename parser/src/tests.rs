@@ -10,10 +10,18 @@ fn parse(input: &str) -> ParseResult {
 }
 
 fn parse_expr(input: &str) -> ParseResult {
+    fn expr(parser: &mut Parser) {
+        let mut parser = parser.with_root(syntax::NodeKind::PROGRAM);
+        if let Err(problem) = parser.expr() {
+            parser.push_problem(problem);
+        }
+        parser.skip_until(syntax::TokenKind::EOF);
+    }
+
     let input = input.replace(" ", "");
     let mapper = Mapper::new(&input);
     let parser = Parser::new(&input, &mapper);
-    parser.test_pseudo(first::PseudoKind::EXPR)
+    parser.run(expr)
 }
 
 // TODO(MH): Filter out trivia.
@@ -41,7 +49,8 @@ fn dump_problems(problems: &Vec<Problem>) -> String {
 
 #[test]
 fn webui_sample() {
-    let result = parse(r#"
+    let result = parse(
+        r#"
     // Recursive version of Fibonacci.
     fn fib_rec(n) {
         if n <= 1 {
@@ -66,7 +75,8 @@ fn webui_sample() {
         go(n);
         a
     }
-    "#);
+    "#,
+    );
     assert_snapshot!(dump_syntax(result.syntax, false), @r#"
     PROGRAM@0..504
       WHITESPACE@0..5 "\n    "
@@ -306,7 +316,6 @@ fn webui_sample() {
     assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
-
 #[test]
 fn empty() {
     let result = parse("");
@@ -366,6 +375,37 @@ fn two_good_fns() {
           RBRACE@18..19 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
+}
+
+#[test]
+fn one_good_fn_between_errors() {
+    let result = parse(" ? fn f() {} ? ");
+    assert_snapshot!(dump_syntax(result.syntax, false), @r#"
+    PROGRAM@0..15
+      WHITESPACE@0..1 " "
+      ERROR@1..2
+        UNKNOWN@1..2 "?"
+      WHITESPACE@2..3 " "
+      DEFN_FN@3..12
+        KW_FN@3..5 "fn"
+        WHITESPACE@5..6 " "
+        IDENT@6..7 "f"
+        PARAMS_FN@7..9
+          LPAREN@7..8 "("
+          RPAREN@8..9 ")"
+        WHITESPACE@9..10 " "
+        EXPR_BLOCK@10..12
+          LBRACE@10..11 "{"
+          RBRACE@11..12 "}"
+      WHITESPACE@12..13 " "
+      ERROR@13..14
+        UNKNOWN@13..14 "?"
+      WHITESPACE@14..15 " "
+    "#);
+    assert_snapshot!(dump_problems(&result.problems), @r#"
+    ERROR 1:2-1:3: Found UNKNOWN, expected KW_FN. [parser/program]
+    ERROR 1:14-1:15: Found UNKNOWN, expected KW_FN. [parser/program]
+    "#);
 }
 
 #[test]
@@ -886,7 +926,7 @@ mod level_infix {
     fn or_or_err() {
         let result = parse_expr("A || B || ?");
         assert_snapshot!(dump_syntax(result.syntax, false), @r#"
-        PROGRAM@0..6
+        PROGRAM@0..7
           EXPR_INFIX@0..6
             EXPR_VAR@0..1
               IDENT@0..1 "A"
@@ -897,6 +937,8 @@ mod level_infix {
                 IDENT@3..4 "B"
               OP_INFIX@4..6
                 BAR_BAR@4..6 "||"
+          ERROR@6..7
+            UNKNOWN@6..7 "?"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
@@ -907,7 +949,7 @@ mod level_infix {
     fn add_add_err() {
         let result = parse_expr("A + B + ?");
         assert_snapshot!(dump_syntax(result.syntax, false), @r#"
-        PROGRAM@0..4
+        PROGRAM@0..5
           EXPR_INFIX@0..4
             EXPR_INFIX@0..3
               EXPR_VAR@0..1
@@ -918,6 +960,8 @@ mod level_infix {
                 IDENT@2..3 "B"
             OP_INFIX@3..4
               PLUS@3..4 "+"
+          ERROR@4..5
+            UNKNOWN@4..5 "?"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
@@ -963,13 +1007,15 @@ mod level_prefix {
     fn not_not_err() {
         let result = parse_expr("!!?");
         assert_snapshot!(dump_syntax(result.syntax, false), @r#"
-        PROGRAM@0..2
+        PROGRAM@0..3
           EXPR_PREFIX@0..2
             OP_PREFIX@0..1
               BANG@0..1 "!"
             EXPR_PREFIX@1..2
               OP_PREFIX@1..2
                 BANG@1..2 "!"
+          ERROR@2..3
+            UNKNOWN@2..3 "?"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | IDENT | LIT_NAT. [parser/program]

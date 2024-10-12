@@ -2,6 +2,8 @@ use felix_common::{srcloc::Mapper, Problem};
 use logos::Logos;
 
 use crate::syntax::{self, NodeKind, TokenKind, TokenKindSet};
+use NodeKind::ERROR;
+use TokenKind::EOF;
 
 /// Stateful parser for the Rufus language.
 pub struct Parser<'a> {
@@ -22,6 +24,8 @@ pub struct ParseResult {
     pub problems: Vec<Problem>,
 }
 
+pub use rowan::Checkpoint;
+
 impl<'a> Parser<'a> {
     /// Create a new parser on the given input.
     pub fn new(input: &'a str, mapper: &'a Mapper) -> Self {
@@ -39,23 +43,8 @@ impl<'a> Parser<'a> {
 
     pub fn run(mut self, rule: fn(&mut Self)) -> ParseResult {
         rule(&mut self);
-        let green_node = self.builder.finish();
-        ParseResult {
-            syntax: rowan::SyntaxNode::new_root(green_node),
-            problems: self.problems,
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn test_pseudo(mut self, pseudo: crate::first::PseudoKind) -> ParseResult {
-        let result = || -> Result<_> {
-            let mut parser = self.with_node(NodeKind::PROGRAM);
-            parser.parse_pseudo(pseudo)?;
-            parser.expect(TokenKind::EOF)
-        }();
-        if let Err(problem) = result {
-            self.push_problem(problem);
-        }
+        assert_eq!(self.peek(), EOF);
+        assert!(self.trivia.is_empty());
         let green_node = self.builder.finish();
         ParseResult {
             syntax: rowan::SyntaxNode::new_root(green_node),
@@ -113,6 +102,26 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Skip tokens until a one from the expected set or EOF is found. This function is
+    /// meant for error recovery. Hence, no problems are reported. The skipped
+    /// tokens are collected in a single ERROR node. The found token is _not_
+    /// consumed but returned.
+    pub(crate) fn skip_until(&mut self, expected: impl Into<TokenKindSet>) -> TokenKind {
+        let expected = expected.into() | EOF;
+        let mut token = self.peek();
+        if token.is(expected) {
+            return token;
+        }
+        let mut parser = self.with_node(ERROR);
+        loop {
+            assert!(parser.consume(token).is_ok());
+            token = parser.peek();
+            if token.is(expected) {
+                return token;
+            }
+        }
+    }
+
     pub(crate) fn consume(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
         let expected = expected.into();
         let token = self.expect(expected)?;
@@ -126,47 +135,78 @@ impl<'a> Parser<'a> {
         Ok(token)
     }
 
-    pub(crate) fn with_immediate_node<'b>(&'b mut self, node: NodeKind) -> Scope<'a, 'b> {
-        self.open_node_stack.push(node);
-        self.builder.start_node(node.into());
-        Scope::new(self, Self::close_node)
-    }
-
-    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> Scope<'a, 'b> {
-        self.peek();
-        self.commit_trivia();
-        self.with_immediate_node(node)
-    }
-
-    pub(crate) fn checkpoint(&mut self) -> rowan::Checkpoint {
+    /// Return a checkpoint for usage with `open_node_at` and `with_node_at`.
+    pub(crate) fn checkpoint(&mut self) -> Checkpoint {
         self.peek();
         self.commit_trivia();
         self.builder.checkpoint()
     }
 
-    pub(crate) fn with_node_at<'b>(
-        &'b mut self,
-        checkpoint: rowan::Checkpoint,
-        node: NodeKind,
-    ) -> Scope<'a, 'b> {
+    /// Open a new node in the CST without including leading trivia.
+    fn open_node(&mut self, node: NodeKind) {
+        self.peek();
+        self.commit_trivia();
+        self.open_root(node);
+    }
+
+    /// Retroactively open a new node in the CST without including leading
+    /// trivia at the time when the checkpoint was created.
+    fn open_node_at(&mut self, checkpoint: Checkpoint, node: NodeKind) {
         self.open_node_stack.push(node);
         self.builder.start_node_at(checkpoint, node.into());
+    }
+
+    /// Open a new node in the CST including leading trivia.
+    /// This is meant to be used for the root node of the CST. Hence the name.
+    fn open_root(&mut self, node: NodeKind) {
+        self.open_node_stack.push(node);
+        self.builder.start_node(node.into());
+    }
+
+    /// Close the current node in the CST without including trailing trivia.
+    fn close_node(&mut self) {
+        self.builder.finish_node();
+        assert!(self.open_node_stack.pop().is_some());
+    }
+
+    /// Close the current node in the CST including trivia.
+    /// This is meant to be used for the root node of the CST. Hence the name.
+    fn close_root(&mut self) {
+        self.commit_trivia();
+        self.close_node();
+    }
+
+    /// Create a sub-parser bracketed with `open_node` and `close_node`.
+    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> Scope<'a, 'b> {
+        self.open_node(node);
         Scope::new(self, Self::close_node)
     }
 
-    fn close_node(parser: &mut Parser) {
-        parser.builder.finish_node();
-        assert!(parser.open_node_stack.pop().is_some());
+    /// Create a sub-parser bracketed with `open_node_at` and `close_node`.
+    pub(crate) fn with_node_at<'b>(
+        &'b mut self,
+        checkpoint: Checkpoint,
+        node: NodeKind,
+    ) -> Scope<'a, 'b> {
+        self.open_node_at(checkpoint, node);
+        Scope::new(self, Self::close_node)
+    }
+
+    /// Create a sub-parser bracketed with `open_root` and `close_root`.
+    pub(crate) fn with_root<'b>(&'b mut self, root: NodeKind) -> Scope<'a, 'b> {
+        self.open_root(root);
+        Scope::new(self, Self::close_root)
     }
 }
 
+// TODO(MH): Rename into SubParser.
 pub struct Scope<'a, 'b> {
     parser: &'b mut Parser<'a>,
-    drop_fn: fn(&mut Parser),
+    drop_fn: fn(&mut Parser<'a>),
 }
 
 impl<'a, 'b> Scope<'a, 'b> {
-    fn new(parser: &'b mut Parser<'a>, drop_fn: fn(&mut Parser)) -> Self {
+    fn new(parser: &'b mut Parser<'a>, drop_fn: fn(&mut Parser<'a>)) -> Self {
         Self { parser, drop_fn }
     }
 }

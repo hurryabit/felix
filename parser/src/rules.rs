@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
+    fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
         self.expect(pseudo.first())?;
         match pseudo {
             DEFN => self.defn(),
@@ -53,40 +53,18 @@ impl<'a> Parser<'a> {
     }
 
     pub fn program(&mut self) {
-        let first = PROGRAM.first() | EOF;
-        let mut parser = self.with_immediate_node(PROGRAM);
-        loop {
-            match parser.expect(first) {
-                Err(err) => {
-                    parser.push_problem(err);
-                    if parser.peek().is(!first) {
-                        let mut parser = parser.with_node(ERROR);
-                        while parser.peek().is(!first) {
-                            let _ = parser.consume(!first);
-                        }
-                    }
-                }
-                Ok(EOF) => {
-                    parser.commit_trivia();
-                    return;
-                }
-                Ok(_) => {
-                    if let Err(err) = parser.parse_pseudo(DEFN) {
-                        parser.push_problem(err);
-                        if parser.peek().is(!first) {
-                            let mut parser = parser.with_node(ERROR);
-                            while parser.peek().is(!first) {
-                                let _ = parser.consume(!first);
-                            }
-                        }
-                    }
-                }
+        let first = DEFN.first() | EOF;
+        let mut parser = self.with_root(PROGRAM);
+        while parser.peek() != EOF {
+            if let Err(problem) = parser.parse_pseudo(DEFN) {
+                parser.push_problem(problem);
+                parser.skip_until(first);
             }
         }
     }
 
     fn defn(&mut self) -> Result<()> {
-        match self.peek() {
+        match self.expect(DEFN.first())? {
             KW_FN => self.parse(DEFN_FN),
             _ => unreachable!(),
         }
@@ -155,7 +133,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn expr(&mut self) -> Result<()> {
+    pub(crate) fn expr(&mut self) -> Result<()> {
         match self.peek() {
             BAR => self.parse(EXPR_CLOSURE),
             KW_IF => self.parse(EXPR_IF),
