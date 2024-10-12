@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
 
     pub fn program(&mut self) {
         let first = PROGRAM.first() | EOF;
-        let mut parser = self.with_node(PROGRAM);
+        let mut parser = self.with_immediate_node(PROGRAM);
         loop {
             match parser.expect(first) {
                 Err(err) => {
@@ -66,7 +66,10 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                Ok(EOF) => return,
+                Ok(EOF) => {
+                    parser.commit_trivia();
+                    return;
+                }
                 Ok(_) => {
                     if let Err(err) = parser.parse_pseudo(DEFN) {
                         parser.push_problem(err);

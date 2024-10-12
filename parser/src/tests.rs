@@ -88,7 +88,7 @@ fn webui_sample() {
           STMT_IF@68..160
             KW_IF@68..70 "if"
             WHITESPACE@70..71 " "
-            EXPR_INFIX@71..78
+            EXPR_INFIX@71..77
               EXPR_VAR@71..72
                 IDENT@71..72 "n"
               WHITESPACE@72..73 " "
@@ -97,7 +97,7 @@ fn webui_sample() {
               WHITESPACE@75..76 " "
               EXPR_LIT@76..77
                 LIT_NAT@76..77 "1"
-              WHITESPACE@77..78 " "
+            WHITESPACE@77..78 " "
             EXPR_BLOCK@78..103
               LBRACE@78..79 "{"
               WHITESPACE@79..92 "\n            "
@@ -111,7 +111,7 @@ fn webui_sample() {
             EXPR_BLOCK@109..160
               LBRACE@109..110 "{"
               WHITESPACE@110..123 "\n            "
-              EXPR_INFIX@123..159
+              EXPR_INFIX@123..150
                 EXPR_CALL@123..135
                   EXPR_VAR@123..130
                     IDENT@123..130 "fib_rec"
@@ -142,7 +142,7 @@ fn webui_sample() {
                       EXPR_LIT@148..149
                         LIT_NAT@148..149 "1"
                     RPAREN@149..150 ")"
-                WHITESPACE@150..159 "\n        "
+              WHITESPACE@150..159 "\n        "
               RBRACE@159..160 "}"
           WHITESPACE@160..165 "\n    "
           RBRACE@165..166 "}"
@@ -210,10 +210,10 @@ fn webui_sample() {
               EXPR_BLOCK@317..467
                 LBRACE@317..318 "{"
                 WHITESPACE@318..331 "\n            "
-                STMT_IF@331..466
+                STMT_IF@331..457
                   KW_IF@331..333 "if"
                   WHITESPACE@333..334 " "
-                  EXPR_INFIX@334..340
+                  EXPR_INFIX@334..339
                     EXPR_VAR@334..335
                       IDENT@334..335 "n"
                     WHITESPACE@335..336 " "
@@ -222,7 +222,7 @@ fn webui_sample() {
                     WHITESPACE@337..338 " "
                     EXPR_LIT@338..339
                       LIT_NAT@338..339 "0"
-                    WHITESPACE@339..340 " "
+                  WHITESPACE@339..340 " "
                   EXPR_BLOCK@340..457
                     LBRACE@340..341 "{"
                     WHITESPACE@341..358 "\n                "
@@ -282,7 +282,7 @@ fn webui_sample() {
                       SEMI@442..443 ";"
                     WHITESPACE@443..456 "\n            "
                     RBRACE@456..457 "}"
-                  WHITESPACE@457..466 "\n        "
+                WHITESPACE@457..466 "\n        "
                 RBRACE@466..467 "}"
             SEMI@467..468 ";"
           WHITESPACE@468..477 "\n        "
@@ -386,7 +386,7 @@ fn infix() {
         EXPR_BLOCK@8..17
           LBRACE@8..9 "{"
           WHITESPACE@9..10 " "
-          EXPR_INFIX@10..16
+          EXPR_INFIX@10..15
             EXPR_VAR@10..11
               IDENT@10..11 "x"
             WHITESPACE@11..12 " "
@@ -395,7 +395,7 @@ fn infix() {
             WHITESPACE@13..14 " "
             EXPR_VAR@14..15
               IDENT@14..15 "x"
-            WHITESPACE@15..16 " "
+          WHITESPACE@15..16 " "
           RBRACE@16..17 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
@@ -406,7 +406,7 @@ fn missing_infix() {
     let result = parse("fn f(x) { x x }");
     assert_snapshot!(dump_syntax(result.syntax, false), @r#"
     PROGRAM@0..15
-      DEFN_FN@0..12
+      DEFN_FN@0..11
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
@@ -416,12 +416,12 @@ fn missing_infix() {
             IDENT@5..6 "x"
           RPAREN@6..7 ")"
         WHITESPACE@7..8 " "
-        EXPR_BLOCK@8..12
+        EXPR_BLOCK@8..11
           LBRACE@8..9 "{"
           WHITESPACE@9..10 " "
           EXPR_VAR@10..11
             IDENT@10..11 "x"
-          WHITESPACE@11..12 " "
+      WHITESPACE@11..12 " "
       ERROR@12..15
         IDENT@12..13 "x"
         WHITESPACE@13..14 " "

@@ -9,6 +9,7 @@ pub struct Parser<'a> {
     mapper: &'a Mapper,
     lexer: logos::Lexer<'a, TokenKind>,
     peeked: Option<TokenKind>,
+    trivia: Vec<(TokenKind, std::ops::Range<usize>)>,
     open_node_stack: Vec<NodeKind>,
     builder: rowan::GreenNodeBuilder<'a>,
     problems: Vec<Problem>,
@@ -29,6 +30,7 @@ impl<'a> Parser<'a> {
             mapper,
             lexer: TokenKind::lexer(input),
             peeked: None,
+            trivia: Vec::new(),
             open_node_stack: Vec::new(),
             builder: rowan::GreenNodeBuilder::new(),
             problems: Vec::new(),
@@ -61,11 +63,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn checkpoint(&mut self) -> rowan::Checkpoint {
-        self.peek(); // Put whitespace before the checkpoint.
-        self.builder.checkpoint()
-    }
-
     pub(crate) fn push_problem(&mut self, problem: Problem) {
         self.problems.push(problem);
     }
@@ -79,6 +76,12 @@ impl<'a> Parser<'a> {
             .error(span.start as u32, span.end as u32, source, message)
     }
 
+    pub(crate) fn commit_trivia(&mut self) {
+        for (token, span) in std::mem::take(&mut self.trivia).into_iter() {
+            self.builder.token(token.into(), &self.input[span]);
+        }
+    }
+
     pub(crate) fn peek(&mut self) -> TokenKind {
         if let Some(token) = self.peeked {
             return token;
@@ -89,8 +92,7 @@ impl<'a> Parser<'a> {
                 Some(Err(_)) => break TokenKind::UNKNOWN,
                 Some(Ok(token)) => {
                     if token.is_trivia() {
-                        self.builder
-                            .token(token.into(), &self.input[self.lexer.span()]);
+                        self.trivia.push((token, self.lexer.span()));
                     } else {
                         break token;
                     }
@@ -117,14 +119,27 @@ impl<'a> Parser<'a> {
         if token == TokenKind::EOF {
             panic!("consume end-of-file");
         }
+        self.commit_trivia();
         self.builder
             .token(token.into(), &self.input[self.lexer.span()]);
         self.peeked = None;
         Ok(token)
     }
 
-    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> NodeScope<'a, 'b> {
+    pub(crate) fn with_immediate_node<'b>(&'b mut self, node: NodeKind) -> NodeScope<'a, 'b> {
         NodeScope::new(self, node)
+    }
+
+    pub(crate) fn with_node<'b>(&'b mut self, node: NodeKind) -> NodeScope<'a, 'b> {
+        self.peek();
+        self.commit_trivia();
+        NodeScope::new(self, node)
+    }
+
+    pub(crate) fn checkpoint(&mut self) -> rowan::Checkpoint {
+        self.peek();
+        self.commit_trivia();
+        self.builder.checkpoint()
     }
 
     pub(crate) fn with_node_at<'b>(
