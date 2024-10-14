@@ -4,7 +4,7 @@ use super::syntax::{
 use enumset::enum_set;
 
 use NodeKind::*;
-use PseudoKind::*;
+use AliasKind::*;
 use TokenKind::*;
 
 #[allow(non_camel_case_types)]
@@ -21,10 +21,10 @@ use TokenKind::*;
     strum::EnumIter,
     strum::FromRepr,
 )]
+
 #[repr(u16)]
 #[enumset(repr = "u64")]
-// TODO(MH): Rename to UnionKind or AliasKind.
-pub(crate) enum PseudoKind {
+pub(crate) enum AliasKind {
     DEFN,
     STMT,
     EXPR,
@@ -34,7 +34,7 @@ pub(crate) enum PseudoKind {
     LEVEL_ATOM,
 }
 
-pub(crate) type PseudoKindSet = enumset::EnumSet<PseudoKind>;
+pub(crate) type AliasKindSet = enumset::EnumSet<AliasKind>;
 
 pub(crate) trait First {
     fn first(self) -> TokenKindSet;
@@ -99,7 +99,7 @@ impl First for NodeKindSet {
     }
 }
 
-impl First for PseudoKind {
+impl First for AliasKind {
     fn first(self) -> TokenKindSet {
         // self.expand().first()
         match self {
@@ -116,11 +116,11 @@ impl First for PseudoKind {
     }
 }
 
-impl First for PseudoKindSet {
+impl First for AliasKindSet {
     fn first(self) -> TokenKindSet {
         let mut set = TokenKindSet::empty();
-        for pseudo in self {
-            set |= pseudo.first();
+        for union in self {
+            set |= union.first();
         }
         set
     }
@@ -145,9 +145,9 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_kind_first_terminates() {
-        for pseudo in PseudoKindSet::all() {
-            pseudo.first();
+    fn alias_kind_first_terminates() {
+        for alias in AliasKindSet::all() {
+            alias.first();
         }
     }
 }

@@ -1,10 +1,10 @@
 // This module implements a parser for the grammar provided in notes.md.
-use crate::first::{First, PseudoKind};
+use crate::first::{First, AliasKind};
 use crate::parser::{Parser, Result};
 use crate::syntax::{NodeKind, TokenKind, INFIX_OPS, LITERALS, PREFIX_OPS};
 
 use NodeKind::*;
-use PseudoKind::*;
+use AliasKind::*;
 use TokenKind::*;
 
 impl<'a> Parser<'a> {
@@ -38,8 +38,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_pseudo(&mut self, pseudo: PseudoKind) -> Result<()> {
-        match pseudo {
+    fn parse_alias(&mut self, alias: AliasKind) -> Result<()> {
+        match alias {
             DEFN => self.defn(),
             STMT => unreachable!(),
             EXPR => self.expr(),
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
         let first = DEFN.first() | EOF;
         let mut parser = self.with_root(PROGRAM);
         while parser.peek() != EOF {
-            if let Err(problem) = parser.parse_pseudo(DEFN) {
+            if let Err(problem) = parser.parse_alias(DEFN) {
                 parser.push_problem(problem);
                 parser.skip_until(first);
             }
@@ -64,83 +64,83 @@ impl<'a> Parser<'a> {
     fn defn(&mut self) -> Result<()> {
         match self.peek() {
             KW_FN => self.parse(DEFN_FN),
-            token => Err(self.expect_error(token, DEFN.first())),
+            token => Err(self.expecation_error(token, DEFN.first())),
         }
     }
 
     fn defn_fn(&mut self) -> Result<()> {
-        self.consume(KW_FN)?;
-        self.consume(IDENT)?;
+        self.expect_advance(KW_FN)?;
+        self.expect_advance(IDENT)?;
         self.parse(PARAMS_FN)?;
         self.parse(EXPR_BLOCK)
     }
 
     fn expr_block(&mut self) -> Result<()> {
-        self.consume(LBRACE)?;
+        self.expect_advance(LBRACE)?;
         loop {
             match self.peek() {
                 RBRACE => {
-                    self.consume_any();
+                    self.advance();
                     return Ok(());
                 }
                 KW_LET => self.parse(STMT_LET)?,
                 KW_IF => self.parse(STMT_IF)?,
                 token if token.starts(EXPR) => {
                     let checkpoint = self.checkpoint();
-                    self.parse_pseudo(EXPR)?;
+                    self.parse_alias(EXPR)?;
                     match self.peek() {
                         EQUALS => {
-                            self.consume_any();
+                            self.advance();
                             let mut parser = self.with_node_at(checkpoint, STMT_ASSIGN);
-                            parser.parse_pseudo(EXPR)?;
-                            parser.consume(SEMI)?;
+                            parser.parse_alias(EXPR)?;
+                            parser.expect_advance(SEMI)?;
                         }
                         SEMI => {
-                            self.consume_any();
+                            self.advance();
                             self.with_node_at(checkpoint, STMT_EXPR);
                         }
                         RBRACE => {
-                            self.consume_any();
+                            self.advance();
                             return Ok(());
                         }
-                        token => return Err(self.expect_error(token, EQUALS | SEMI | RBRACE)),
+                        token => return Err(self.expecation_error(token, EQUALS | SEMI | RBRACE)),
                     }
                 }
-                token => return Err(self.expect_error(token, RBRACE | STMT.first() | EXPR.first())),
+                token => return Err(self.expecation_error(token, RBRACE | STMT.first() | EXPR.first())),
             }
         }
     }
 
     fn stmt_if(&mut self) -> Result<()> {
-        self.consume(KW_IF)?;
-        self.parse_pseudo(EXPR)?;
+        self.expect_advance(KW_IF)?;
+        self.parse_alias(EXPR)?;
         self.parse(EXPR_BLOCK)?;
         // TODO(MH): We get a better error message if we know the folloe set.
         if self.peek() != KW_ELSE {
             return Ok(());
         }
-        self.consume_any();
+        self.advance();
         match self.peek() {
             // TODO(MH): Turn the tail recursion into a loop?
             KW_IF => self.parse(STMT_IF),
             LBRACE => self.parse(EXPR_BLOCK),
-            token => Err(self.expect_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
+            token => Err(self.expecation_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
         }
     }
 
     fn stmt_let(&mut self) -> Result<()> {
-        self.consume(KW_LET)?;
+        self.expect_advance(KW_LET)?;
         match self.peek() {
             KW_REC => {
-                self.consume_any();
+                self.advance();
             }
             token if token.starts(BINDER) => {}
-            token => return Err(self.expect_error(token, KW_REC | BINDER.first())),
+            token => return Err(self.expecation_error(token, KW_REC | BINDER.first())),
         }
         self.parse(BINDER)?;
-        self.consume(EQUALS)?;
-        self.parse_pseudo(EXPR)?;
-        self.consume(SEMI)?;
+        self.expect_advance(EQUALS)?;
+        self.parse_alias(EXPR)?;
+        self.expect_advance(SEMI)?;
         Ok(())
     }
 
@@ -148,25 +148,25 @@ impl<'a> Parser<'a> {
         match self.peek() {
             BAR => self.parse(EXPR_CLOSURE),
             KW_IF => self.parse(EXPR_IF),
-            token if token.starts(LEVEL_INFIX) => self.parse_pseudo(LEVEL_INFIX),
-            token => Err(self.expect_error(token, EXPR.first())),
+            token if token.starts(LEVEL_INFIX) => self.parse_alias(LEVEL_INFIX),
+            token => Err(self.expecation_error(token, EXPR.first())),
         }
     }
 
     fn expr_closure(&mut self) -> Result<()> {
         self.parse(PARAMS_CLOSURE)?;
-        self.parse_pseudo(EXPR)
+        self.parse_alias(EXPR)
     }
 
     fn expr_if(&mut self) -> Result<()> {
-        self.consume(KW_IF)?;
-        self.parse_pseudo(EXPR)?;
+        self.expect_advance(KW_IF)?;
+        self.parse_alias(EXPR)?;
         self.parse(EXPR_BLOCK)?;
-        self.consume(KW_ELSE)?;
+        self.expect_advance(KW_ELSE)?;
         match self.peek() {
             KW_IF => self.parse(EXPR_IF),
             LBRACE => self.parse(EXPR_BLOCK),
-            token => Err(self.expect_error(token, KW_IF | LBRACE)),
+            token => Err(self.expecation_error(token, KW_IF | LBRACE)),
         }
     }
 
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
 
         let mut stack: Vec<StackEntry> = Vec::new();
         let mut checkpoint = self.checkpoint();
-        self.parse_pseudo(LEVEL_PREFIX)?;
+        self.parse_alias(LEVEL_PREFIX)?;
 
         let res = loop {
             let op = self.peek();
@@ -224,14 +224,14 @@ impl<'a> Parser<'a> {
                 }
                 break OP_INFIX;
             };
-            assert!(self.with_node(op_node).consume(op).is_ok());
+            assert!(self.with_node(op_node).expect_advance(op).is_ok());
             stack.push(StackEntry {
                 checkpoint,
                 op,
                 right_power,
             });
             checkpoint = self.checkpoint();
-            if let Err(problem) = self.parse_pseudo(LEVEL_PREFIX) {
+            if let Err(problem) = self.parse_alias(LEVEL_PREFIX) {
                 break Err(problem);
             }
         };
@@ -247,11 +247,11 @@ impl<'a> Parser<'a> {
             let token = self.peek();
             if token.is(PREFIX_OPS) {
                 stack.push(self.checkpoint());
-                self.with_node(OP_PREFIX).consume_any();
+                self.with_node(OP_PREFIX).advance();
             } else if token.starts(LEVEL_POSTFIX) {
-                break self.parse_pseudo(LEVEL_POSTFIX);
+                break self.parse_alias(LEVEL_POSTFIX);
             } else {
-                break Err(self.expect_error(token, LEVEL_PREFIX.first()));
+                break Err(self.expecation_error(token, LEVEL_PREFIX.first()));
             }
         };
         for checkpoint in stack.into_iter().rev() {
@@ -262,14 +262,14 @@ impl<'a> Parser<'a> {
 
     fn level_postfix(&mut self) -> Result<()> {
         let checkpoint = self.checkpoint();
-        self.parse_pseudo(LEVEL_ATOM)?;
+        self.parse_alias(LEVEL_ATOM)?;
         while self.peek().is(LPAREN | DOT) {
             match self.peek() {
                 LPAREN => self.with_node_at(checkpoint, EXPR_CALL).parse(ARGS)?,
                 DOT => {
                     let mut parser = self.with_node_at(checkpoint, EXPR_SELECT);
-                    parser.consume(DOT)?;
-                    parser.consume(LIT_NAT)?;
+                    parser.expect_advance(DOT)?;
+                    parser.expect_advance(LIT_NAT)?;
                 }
                 _ => unreachable!(),
             }
@@ -280,75 +280,75 @@ impl<'a> Parser<'a> {
     fn level_atom(&mut self) -> Result<()> {
         match self.peek() {
             IDENT => {
-                self.with_node(EXPR_VAR).consume(IDENT)?;
+                self.with_node(EXPR_VAR).expect_advance(IDENT)?;
                 Ok(())
             }
             LBRACE => self.parse(EXPR_BLOCK),
             LPAREN => self.expr_paren_or_tuple(),
             token if token.is(LITERALS) => {
-                self.with_node(EXPR_LIT).consume(LITERALS)?;
+                self.with_node(EXPR_LIT).expect_advance(LITERALS)?;
                 Ok(())
             }
-            token => Err(self.expect_error(token, LEVEL_ATOM.first())),
+            token => Err(self.expecation_error(token, LEVEL_ATOM.first())),
         }
     }
 
     fn expr_paren_or_tuple(&mut self) -> Result<()> {
         let checkpoint = self.checkpoint();
-        self.consume(LPAREN)?;
+        self.expect_advance(LPAREN)?;
         if self.expect(RPAREN | EXPR.first())? == RPAREN {
-            self.with_node_at(checkpoint, EXPR_TUPLE).consume_any();
+            self.with_node_at(checkpoint, EXPR_TUPLE).advance();
             return Ok(());
         }
-        self.parse_pseudo(EXPR)?;
+        self.parse_alias(EXPR)?;
         if self.expect(RPAREN | COMMA)? == RPAREN {
-            self.with_node_at(checkpoint, EXPR_PAREN).consume_any();
+            self.with_node_at(checkpoint, EXPR_PAREN).advance();
             return Ok(());
         }
         let mut parser = self.with_node_at(checkpoint, EXPR_TUPLE);
-        parser.consume(COMMA)?;
+        parser.expect_advance(COMMA)?;
         if parser.expect(RPAREN | EXPR.first())? == RPAREN {
-            parser.consume_any();
+            parser.advance();
             return Ok(());
         }
         loop {
-            parser.parse_pseudo(EXPR)?;
-            if parser.consume(COMMA | RPAREN)? == RPAREN {
+            parser.parse_alias(EXPR)?;
+            if parser.expect_advance(COMMA | RPAREN)? == RPAREN {
                 return Ok(());
             }
         }
     }
 
     fn params(&mut self, ldelim: TokenKind, rdelim: TokenKind) -> Result<()> {
-        self.consume(ldelim)?;
+        self.expect_advance(ldelim)?;
         if self.peek() == rdelim {
-            self.consume(rdelim)?;
+            self.expect_advance(rdelim)?;
             return Ok(());
         }
         loop {
             self.parse(BINDER)?;
-            if self.consume(COMMA | rdelim)? == rdelim {
+            if self.expect_advance(COMMA | rdelim)? == rdelim {
                 return Ok(());
             }
         }
     }
 
     fn binder(&mut self) -> Result<()> {
-        if self.consume(KW_MUT | IDENT)? == KW_MUT {
-            self.consume(IDENT)?;
+        if self.expect_advance(KW_MUT | IDENT)? == KW_MUT {
+            self.expect_advance(IDENT)?;
         }
         Ok(())
     }
 
     fn args(&mut self) -> Result<()> {
-        self.consume(LPAREN)?;
+        self.expect_advance(LPAREN)?;
         if self.peek() == RPAREN {
-            self.consume(RPAREN)?;
+            self.expect_advance(RPAREN)?;
             return Ok(());
         }
         loop {
-            self.parse_pseudo(EXPR)?;
-            if self.consume(COMMA | RPAREN)? == RPAREN {
+            self.parse_alias(EXPR)?;
+            if self.expect_advance(COMMA | RPAREN)? == RPAREN {
                 return Ok(());
             }
         }

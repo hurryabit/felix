@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
         token
     }
 
-    pub(crate) fn expect_error(
+    pub(crate) fn expecation_error(
         &mut self,
         token: TokenKind,
         expected: impl Into<TokenKindSet>,
@@ -106,14 +106,14 @@ impl<'a> Parser<'a> {
         if token.is(expected) {
             Ok(token)
         } else {
-            Err(self.expect_error(token, expected))
+            Err(self.expecation_error(token, expected))
         }
     }
 
-    pub(crate) fn consume_any(&mut self) -> TokenKind {
+    pub(crate) fn advance(&mut self) -> TokenKind {
         let token = self.peek();
-        if token == TokenKind::EOF {
-            panic!("consuming end-of-file");
+        if token == EOF {
+            panic!("advancing past end-of-file");
         }
         self.commit_trivia();
         self.builder
@@ -122,9 +122,9 @@ impl<'a> Parser<'a> {
         token
     }
 
-    pub(crate) fn consume(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
+    pub(crate) fn expect_advance(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
         self.expect(expected)?;
-        Ok(self.consume_any())
+        Ok(self.advance())
     }
 
     /// Skip tokens until a one from the expected set or EOF is found. This function is
@@ -138,7 +138,7 @@ impl<'a> Parser<'a> {
         }
         let mut parser = self.with_node(ERROR);
         while !parser.peek().is(expected) {
-            parser.consume_any();
+            parser.advance();
         }
         parser.peek()
     }
