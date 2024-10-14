@@ -1,60 +1,18 @@
 // This module implements a parser for the grammar provided in notes.md.
-use crate::first::{First, AliasKind};
+use crate::first::{AliasKind, First};
 use crate::parser::{Parser, Result};
 use crate::syntax::{NodeKind, TokenKind, INFIX_OPS, LITERALS, PREFIX_OPS};
 
-use NodeKind::*;
 use AliasKind::*;
+use NodeKind::*;
 use TokenKind::*;
 
 impl<'a> Parser<'a> {
-    fn parse(&mut self, node: NodeKind) -> Result<()> {
-        let mut parser = self.with_node(node);
-        match node {
-            PROGRAM => unreachable!(),
-            DEFN_FN => parser.defn_fn(),
-            EXPR_BLOCK => parser.expr_block(),
-            STMT_ASSIGN => unreachable!(),
-            STMT_EXPR => unreachable!(),
-            STMT_IF => parser.stmt_if(),
-            STMT_LET => parser.stmt_let(),
-            EXPR_CLOSURE => parser.expr_closure(),
-            EXPR_IF => parser.expr_if(),
-            EXPR_INFIX => unreachable!(),
-            EXPR_PREFIX => unreachable!(),
-            EXPR_CALL => unreachable!(),
-            EXPR_SELECT => unreachable!(),
-            EXPR_VAR => unreachable!(),
-            EXPR_LIT => unreachable!(),
-            EXPR_TUPLE => unreachable!(),
-            EXPR_PAREN => unreachable!(),
-            PARAMS_CLOSURE => parser.params(BAR, BAR),
-            PARAMS_FN => parser.params(LPAREN, RPAREN),
-            BINDER => parser.binder(),
-            ARGS => parser.args(),
-            OP_INFIX => unreachable!(),
-            OP_PREFIX => unreachable!(),
-            ERROR => unreachable!(),
-        }
-    }
-
-    fn parse_alias(&mut self, alias: AliasKind) -> Result<()> {
-        match alias {
-            DEFN => self.defn(),
-            STMT => unreachable!(),
-            EXPR => self.expr(),
-            LEVEL_INFIX => self.level_infix(),
-            LEVEL_PREFIX => self.level_prefix(),
-            LEVEL_POSTFIX => self.level_postfix(),
-            LEVEL_ATOM => self.level_atom(),
-        }
-    }
-
     pub fn program(&mut self) {
         let first = DEFN.first() | EOF;
         let mut parser = self.with_root(PROGRAM);
         while parser.peek() != EOF {
-            if let Err(problem) = parser.parse_alias(DEFN) {
+            if let Err(problem) = parser.defn() {
                 parser.push_problem(problem);
                 parser.skip_until(first);
             }
@@ -63,110 +21,118 @@ impl<'a> Parser<'a> {
 
     fn defn(&mut self) -> Result<()> {
         match self.peek() {
-            KW_FN => self.parse(DEFN_FN),
+            KW_FN => self.defn_fn(),
             token => Err(self.expecation_error(token, DEFN.first())),
         }
     }
 
     fn defn_fn(&mut self) -> Result<()> {
-        self.expect_advance(KW_FN)?;
-        self.expect_advance(IDENT)?;
-        self.parse(PARAMS_FN)?;
-        self.parse(EXPR_BLOCK)
+        let mut parser = self.with_node(DEFN_FN);
+        parser.expect_advance(KW_FN)?;
+        parser.expect_advance(IDENT)?;
+        parser.params_fn()?;
+        parser.expr_block()
     }
 
     fn expr_block(&mut self) -> Result<()> {
-        self.expect_advance(LBRACE)?;
+        let mut parser = self.with_node(EXPR_BLOCK);
+        parser.expect_advance(LBRACE)?;
         loop {
-            match self.peek() {
+            match parser.peek() {
                 RBRACE => {
-                    self.advance();
+                    parser.advance();
                     return Ok(());
                 }
-                KW_LET => self.parse(STMT_LET)?,
-                KW_IF => self.parse(STMT_IF)?,
+                KW_LET => parser.stmt_let()?,
+                KW_IF => parser.stmt_if()?,
                 token if token.starts(EXPR) => {
-                    let checkpoint = self.checkpoint();
-                    self.parse_alias(EXPR)?;
-                    match self.peek() {
+                    let checkpoint = parser.checkpoint();
+                    parser.expr()?;
+                    match parser.peek() {
                         EQUALS => {
-                            self.advance();
-                            let mut parser = self.with_node_at(checkpoint, STMT_ASSIGN);
-                            parser.parse_alias(EXPR)?;
+                            parser.advance();
+                            let mut parser = parser.with_node_at(checkpoint, STMT_ASSIGN);
+                            parser.expr()?;
                             parser.expect_advance(SEMI)?;
                         }
                         SEMI => {
-                            self.advance();
-                            self.with_node_at(checkpoint, STMT_EXPR);
+                            parser.advance();
+                            parser.with_node_at(checkpoint, STMT_EXPR);
                         }
                         RBRACE => {
-                            self.advance();
+                            parser.advance();
                             return Ok(());
                         }
-                        token => return Err(self.expecation_error(token, EQUALS | SEMI | RBRACE)),
+                        token => return Err(parser.expecation_error(token, EQUALS | SEMI | RBRACE)),
                     }
                 }
-                token => return Err(self.expecation_error(token, RBRACE | STMT.first() | EXPR.first())),
+                token => {
+                    return Err(parser.expecation_error(token, RBRACE | STMT.first() | EXPR.first()))
+                }
             }
         }
     }
 
     fn stmt_if(&mut self) -> Result<()> {
-        self.expect_advance(KW_IF)?;
-        self.parse_alias(EXPR)?;
-        self.parse(EXPR_BLOCK)?;
-        // TODO(MH): We get a better error message if we know the folloe set.
-        if self.peek() != KW_ELSE {
+        let mut parser = self.with_node(STMT_IF);
+        parser.expect_advance(KW_IF)?;
+        parser.expr()?;
+        parser.expr_block()?;
+        // TODO(MH): We get a better error message if we know the follow set.
+        if parser.peek() != KW_ELSE {
             return Ok(());
         }
-        self.advance();
-        match self.peek() {
+        parser.advance();
+        match parser.peek() {
             // TODO(MH): Turn the tail recursion into a loop?
-            KW_IF => self.parse(STMT_IF),
-            LBRACE => self.parse(EXPR_BLOCK),
-            token => Err(self.expecation_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
+            KW_IF => parser.stmt_if(),
+            LBRACE => parser.expr_block(),
+            token => Err(parser.expecation_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
         }
     }
 
     fn stmt_let(&mut self) -> Result<()> {
-        self.expect_advance(KW_LET)?;
-        match self.peek() {
+        let mut parser = self.with_node(STMT_LET);
+        parser.expect_advance(KW_LET)?;
+        match parser.peek() {
             KW_REC => {
-                self.advance();
+                parser.advance();
             }
             token if token.starts(BINDER) => {}
-            token => return Err(self.expecation_error(token, KW_REC | BINDER.first())),
+            token => return Err(parser.expecation_error(token, KW_REC | BINDER.first())),
         }
-        self.parse(BINDER)?;
-        self.expect_advance(EQUALS)?;
-        self.parse_alias(EXPR)?;
-        self.expect_advance(SEMI)?;
+        parser.binder()?;
+        parser.expect_advance(EQUALS)?;
+        parser.expr()?;
+        parser.expect_advance(SEMI)?;
         Ok(())
     }
 
     pub(crate) fn expr(&mut self) -> Result<()> {
         match self.peek() {
-            BAR => self.parse(EXPR_CLOSURE),
-            KW_IF => self.parse(EXPR_IF),
-            token if token.starts(LEVEL_INFIX) => self.parse_alias(LEVEL_INFIX),
+            BAR => self.expr_closure(),
+            KW_IF => self.expr_if(),
+            token if token.starts(LEVEL_INFIX) => self.level_infix(),
             token => Err(self.expecation_error(token, EXPR.first())),
         }
     }
 
     fn expr_closure(&mut self) -> Result<()> {
-        self.parse(PARAMS_CLOSURE)?;
-        self.parse_alias(EXPR)
+        let mut parser = self.with_node(EXPR_CLOSURE);
+        parser.params_closure()?;
+        parser.expr()
     }
 
     fn expr_if(&mut self) -> Result<()> {
-        self.expect_advance(KW_IF)?;
-        self.parse_alias(EXPR)?;
-        self.parse(EXPR_BLOCK)?;
-        self.expect_advance(KW_ELSE)?;
-        match self.peek() {
-            KW_IF => self.parse(EXPR_IF),
-            LBRACE => self.parse(EXPR_BLOCK),
-            token => Err(self.expecation_error(token, KW_IF | LBRACE)),
+        let mut parser = self.with_node(EXPR_IF);
+        parser.expect_advance(KW_IF)?;
+        parser.expr()?;
+        parser.expr_block()?;
+        parser.expect_advance(KW_ELSE)?;
+        match parser.peek() {
+            KW_IF => parser.expr_if(),
+            LBRACE => parser.expr_block(),
+            token => Err(parser.expecation_error(token, KW_IF | LBRACE)),
         }
     }
 
@@ -197,7 +163,7 @@ impl<'a> Parser<'a> {
 
         let mut stack: Vec<StackEntry> = Vec::new();
         let mut checkpoint = self.checkpoint();
-        self.parse_alias(LEVEL_PREFIX)?;
+        self.level_prefix()?;
 
         let res = loop {
             let op = self.peek();
@@ -231,7 +197,7 @@ impl<'a> Parser<'a> {
                 right_power,
             });
             checkpoint = self.checkpoint();
-            if let Err(problem) = self.parse_alias(LEVEL_PREFIX) {
+            if let Err(problem) = self.level_prefix() {
                 break Err(problem);
             }
         };
@@ -249,7 +215,7 @@ impl<'a> Parser<'a> {
                 stack.push(self.checkpoint());
                 self.with_node(OP_PREFIX).advance();
             } else if token.starts(LEVEL_POSTFIX) {
-                break self.parse_alias(LEVEL_POSTFIX);
+                break self.level_postfix();
             } else {
                 break Err(self.expecation_error(token, LEVEL_PREFIX.first()));
             }
@@ -262,10 +228,10 @@ impl<'a> Parser<'a> {
 
     fn level_postfix(&mut self) -> Result<()> {
         let checkpoint = self.checkpoint();
-        self.parse_alias(LEVEL_ATOM)?;
+        self.level_atom()?;
         while self.peek().is(LPAREN | DOT) {
             match self.peek() {
-                LPAREN => self.with_node_at(checkpoint, EXPR_CALL).parse(ARGS)?,
+                LPAREN => self.with_node_at(checkpoint, EXPR_CALL).args()?,
                 DOT => {
                     let mut parser = self.with_node_at(checkpoint, EXPR_SELECT);
                     parser.expect_advance(DOT)?;
@@ -283,7 +249,7 @@ impl<'a> Parser<'a> {
                 self.with_node(EXPR_VAR).expect_advance(IDENT)?;
                 Ok(())
             }
-            LBRACE => self.parse(EXPR_BLOCK),
+            LBRACE => self.expr_block(),
             LPAREN => self.expr_paren_or_tuple(),
             token if token.is(LITERALS) => {
                 self.with_node(EXPR_LIT).expect_advance(LITERALS)?;
@@ -300,7 +266,7 @@ impl<'a> Parser<'a> {
             self.with_node_at(checkpoint, EXPR_TUPLE).advance();
             return Ok(());
         }
-        self.parse_alias(EXPR)?;
+        self.expr()?;
         if self.expect(RPAREN | COMMA)? == RPAREN {
             self.with_node_at(checkpoint, EXPR_PAREN).advance();
             return Ok(());
@@ -312,7 +278,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         loop {
-            parser.parse_alias(EXPR)?;
+            parser.expr()?;
             if parser.expect_advance(COMMA | RPAREN)? == RPAREN {
                 return Ok(());
             }
@@ -326,29 +292,39 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
         loop {
-            self.parse(BINDER)?;
+            self.binder()?;
             if self.expect_advance(COMMA | rdelim)? == rdelim {
                 return Ok(());
             }
         }
     }
 
+    fn params_fn(&mut self) -> Result<()> {
+        self.with_node(PARAMS_FN).params(LPAREN, RPAREN)
+    }
+
+    fn params_closure(&mut self) -> Result<()> {
+        self.with_node(PARAMS_CLOSURE).params(BAR, BAR)
+    }
+
     fn binder(&mut self) -> Result<()> {
-        if self.expect_advance(KW_MUT | IDENT)? == KW_MUT {
-            self.expect_advance(IDENT)?;
+        let mut parser = self.with_node(BINDER);
+        if parser.expect_advance(KW_MUT | IDENT)? == KW_MUT {
+            parser.expect_advance(IDENT)?;
         }
         Ok(())
     }
 
     fn args(&mut self) -> Result<()> {
-        self.expect_advance(LPAREN)?;
-        if self.peek() == RPAREN {
-            self.expect_advance(RPAREN)?;
+        let mut parser = self.with_node(ARGS);
+        parser.expect_advance(LPAREN)?;
+        if parser.peek() == RPAREN {
+            parser.expect_advance(RPAREN)?;
             return Ok(());
         }
         loop {
-            self.parse_alias(EXPR)?;
-            if self.expect_advance(COMMA | RPAREN)? == RPAREN {
+            parser.expr()?;
+            if parser.expect_advance(COMMA | RPAREN)? == RPAREN {
                 return Ok(());
             }
         }
