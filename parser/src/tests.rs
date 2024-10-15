@@ -1103,6 +1103,19 @@ mod expr_closure {
     use super::*;
 
     #[test]
+    fn no_params() {
+        let syntax = parse_expr_success("|| 1");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..3
+          EXPR_CLOSURE@0..3
+            PARAMS_CLOSURE@0..2
+              BAR_BAR@0..2 "||"
+            EXPR_LIT@2..3
+              LIT_NAT@2..3 "1"
+        "#);
+    }
+
+    #[test]
     fn one_param() {
         let syntax = parse_expr_success("|x| 1");
         assert_debug_snapshot!(syntax, @r#"

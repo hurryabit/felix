@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn expr(&mut self) -> Result<()> {
         match self.peek() {
-            BAR => self.expr_closure(),
+            BAR | BAR_BAR => self.expr_closure(),
             KW_IF => self.expr_if(),
             token if token.starts(LEVEL_INFIX) => self.level_infix(),
             token => Err(self.expecation_error(token, EXPR.first())),
@@ -304,7 +304,15 @@ impl<'a> Parser<'a> {
     }
 
     fn params_closure(&mut self) -> Result<()> {
-        self.with_node(PARAMS_CLOSURE).params(BAR, BAR)
+        let mut parser = self.with_node(PARAMS_CLOSURE);
+        match parser.peek() {
+            BAR => parser.params(BAR, BAR),
+            BAR_BAR => {
+                parser.advance();
+                Ok(())
+            }
+            token => Err(parser.expecation_error(token, PARAMS_CLOSURE.first())),
+        }
     }
 
     fn binder(&mut self) -> Result<()> {
