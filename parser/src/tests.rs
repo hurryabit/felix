@@ -1,6 +1,7 @@
 use super::*;
 use felix_common::{srcloc::Mapper, Problem};
 
+
 use insta::{assert_debug_snapshot, assert_snapshot};
 
 fn parse(input: &str) -> ParseResult {
@@ -18,7 +19,7 @@ fn parse_success(input: &str) -> syntax::Node {
 fn parse_expr(input: &str) -> ParseResult {
     fn expr(parser: &mut Parser) {
         let mut parser = parser.with_root(syntax::NodeKind::PROGRAM);
-        if let Err(problem) = parser.expr() {
+        if let Err(problem) = parser.expr(syntax::TokenKind::EOF) {
             parser.push_problem(problem);
         }
         parser.skip_until(syntax::TokenKind::EOF);

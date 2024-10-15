@@ -103,7 +103,7 @@ impl First for AliasKind {
         // self.expand().first()
         match self {
             DEFN => enum_set!(DEFN_FN).first(),
-            BLOCK_INNER => (STMT_LET | STMT_IF).first() | EXPR.first() | RBRACE,
+            BLOCK_INNER => (STMT_LET | STMT_IF).first() | EXPR.first(),
             EXPR => enum_set!(EXPR_CLOSURE | EXPR_IF).first() | LEVEL_INFIX.first(),
             LEVEL_INFIX => LEVEL_PREFIX.first(),
             LEVEL_PREFIX => EXPR_PREFIX.first() | LEVEL_POSTFIX.first(),
@@ -155,14 +155,14 @@ mod tests {
         }
     }
 
-    fn compute_first<'a>(rule: fn(&mut Parser<'a>) -> Result<()>) -> TokenKindSet {
-        fn can_start<'a>(token: TokenKind, rule: fn(&mut Parser<'a>) -> Result<()>) -> bool {
+    fn compute_first<'a>(rule: fn(&mut Parser<'a>, TokenKindSet) -> Result<()>) -> TokenKindSet {
+        fn can_start<'a>(token: TokenKind, rule: fn(&mut Parser<'a>, TokenKindSet) -> Result<()>) -> bool {
             if token.is(TRIVIA) {
                 return false;
             }
             let mut parser = Parser::fake_from_tokens(vec![token, TokenKind::UNKNOWN]);
             let mut parser = parser.with_root(PROGRAM);
-            match rule(&mut parser) {
+            match rule(&mut parser, TokenKindSet::empty()) {
                 Ok(_) => true,
                 Err(problem) => {
                     let start = problem.start.column;
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn node_first_matches() {
-        let cases: Vec<(NodeOrAliasKind, fn(&mut Parser<'static>) -> Result<()>)> = vec![
+        let cases: Vec<(NodeOrAliasKind, fn(&mut Parser<'static>, TokenKindSet) -> Result<()>)> = vec![
             (Alias(DEFN), Parser::defn),
             (Node(DEFN_FN), Parser::defn_fn),
             (Node(BLOCK), Parser::block),
