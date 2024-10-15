@@ -19,7 +19,7 @@ pub enum NodeKind {
 
     DEFN_FN,
 
-    EXPR_BLOCK,
+    BLOCK,
 
     STMT_ASSIGN,
     STMT_EXPR,

@@ -25,7 +25,7 @@ use TokenKind::*;
 #[enumset(repr = "u64")]
 pub(crate) enum AliasKind {
     DEFN,
-    STMT,
+    BLOCK_INNER,
     EXPR,
     LEVEL_INFIX,
     LEVEL_PREFIX,
@@ -62,7 +62,7 @@ impl First for NodeKind {
         match self {
             PROGRAM => DEFN.first(),
             DEFN_FN => enum_set!(KW_FN),
-            EXPR_BLOCK => enum_set!(LBRACE),
+            BLOCK => enum_set!(LBRACE),
             STMT_ASSIGN => EXPR.first(),
             STMT_EXPR => EXPR.first(),
             STMT_IF => enum_set!(KW_IF),
@@ -103,13 +103,13 @@ impl First for AliasKind {
         // self.expand().first()
         match self {
             DEFN => enum_set!(DEFN_FN).first(),
-            STMT => enum_set!(STMT_LET | STMT_IF).first() | EXPR.first(),
+            BLOCK_INNER => (STMT_LET | STMT_IF).first() | EXPR.first() | RBRACE,
             EXPR => enum_set!(EXPR_CLOSURE | EXPR_IF).first() | LEVEL_INFIX.first(),
             LEVEL_INFIX => LEVEL_PREFIX.first(),
             LEVEL_PREFIX => EXPR_PREFIX.first() | LEVEL_POSTFIX.first(),
             LEVEL_POSTFIX => LEVEL_ATOM.first(),
             LEVEL_ATOM => {
-                enum_set!(EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_PAREN | EXPR_BLOCK).first()
+                enum_set!(EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_PAREN | BLOCK).first()
             }
         }
     }
@@ -204,7 +204,8 @@ mod tests {
         let cases: Vec<(NodeOrAliasKind, fn(&mut Parser<'static>) -> Result<()>)> = vec![
             (Alias(DEFN), Parser::defn),
             (Node(DEFN_FN), Parser::defn_fn),
-            (Node(EXPR_BLOCK), Parser::expr_block),
+            (Node(BLOCK), Parser::block),
+            (Alias(BLOCK_INNER), Parser::block_inner),
             (Node(STMT_IF), Parser::stmt_if),
             (Node(STMT_LET), Parser::stmt_let),
             (Alias(EXPR), Parser::expr),

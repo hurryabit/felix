@@ -99,7 +99,7 @@ fn webui_sample() {
             IDENT@55..56 "n"
           RPAREN@56..57 ")"
         WHITESPACE@57..58 " "
-        EXPR_BLOCK@58..166
+        BLOCK@58..166
           LBRACE@58..59 "{"
           WHITESPACE@59..68 "\n        "
           STMT_IF@68..160
@@ -115,7 +115,7 @@ fn webui_sample() {
               EXPR_LIT@76..77
                 LIT_NAT@76..77 "1"
             WHITESPACE@77..78 " "
-            EXPR_BLOCK@78..103
+            BLOCK@78..103
               LBRACE@78..79 "{"
               WHITESPACE@79..92 "\n            "
               EXPR_VAR@92..93
@@ -125,7 +125,7 @@ fn webui_sample() {
             WHITESPACE@103..104 " "
             KW_ELSE@104..108 "else"
             WHITESPACE@108..109 " "
-            EXPR_BLOCK@109..160
+            BLOCK@109..160
               LBRACE@109..110 "{"
               WHITESPACE@110..123 "\n            "
               EXPR_INFIX@123..150
@@ -176,7 +176,7 @@ fn webui_sample() {
             IDENT@241..242 "n"
           RPAREN@242..243 ")"
         WHITESPACE@243..244 " "
-        EXPR_BLOCK@244..499
+        BLOCK@244..499
           LBRACE@244..245 "{"
           WHITESPACE@245..254 "\n        "
           STMT_LET@254..268
@@ -224,7 +224,7 @@ fn webui_sample() {
                   IDENT@314..315 "n"
                 BAR@315..316 "|"
               WHITESPACE@316..317 " "
-              EXPR_BLOCK@317..467
+              BLOCK@317..467
                 LBRACE@317..318 "{"
                 WHITESPACE@318..331 "\n            "
                 STMT_IF@331..457
@@ -240,7 +240,7 @@ fn webui_sample() {
                     EXPR_LIT@338..339
                       LIT_NAT@338..339 "0"
                   WHITESPACE@339..340 " "
-                  EXPR_BLOCK@340..457
+                  BLOCK@340..457
                     LBRACE@340..341 "{"
                     WHITESPACE@341..358 "\n                "
                     STMT_LET@358..368
@@ -345,7 +345,7 @@ fn one_good_fn() {
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
-        EXPR_BLOCK@7..9
+        BLOCK@7..9
           LBRACE@7..8 "{"
           RBRACE@8..9 "}"
     "#);
@@ -365,7 +365,7 @@ fn two_good_fns() {
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
-        EXPR_BLOCK@7..9
+        BLOCK@7..9
           LBRACE@7..8 "{"
           RBRACE@8..9 "}"
       WHITESPACE@9..10 " "
@@ -377,7 +377,7 @@ fn two_good_fns() {
           LPAREN@14..15 "("
           RPAREN@15..16 ")"
         WHITESPACE@16..17 " "
-        EXPR_BLOCK@17..19
+        BLOCK@17..19
           LBRACE@17..18 "{"
           RBRACE@18..19 "}"
     "#);
@@ -401,7 +401,7 @@ fn one_good_fn_between_errors() {
           LPAREN@7..8 "("
           RPAREN@8..9 ")"
         WHITESPACE@9..10 " "
-        EXPR_BLOCK@10..12
+        BLOCK@10..12
           LBRACE@10..11 "{"
           RBRACE@11..12 "}"
       WHITESPACE@12..13 " "
@@ -430,7 +430,7 @@ fn infix() {
             IDENT@5..6 "x"
           RPAREN@6..7 ")"
         WHITESPACE@7..8 " "
-        EXPR_BLOCK@8..17
+        BLOCK@8..17
           LBRACE@8..9 "{"
           WHITESPACE@9..10 " "
           EXPR_INFIX@10..15
@@ -463,7 +463,7 @@ fn missing_infix() {
             IDENT@5..6 "x"
           RPAREN@6..7 ")"
         WHITESPACE@7..8 " "
-        EXPR_BLOCK@8..11
+        BLOCK@8..11
           LBRACE@8..9 "{"
           WHITESPACE@9..10 " "
           EXPR_VAR@10..11
@@ -475,7 +475,7 @@ fn missing_infix() {
         RBRACE@14..15 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @r#"
-    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | SEMI. [parser/expr_block]
+    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | SEMI. [parser/block]
     "#);
 }
 
@@ -494,7 +494,7 @@ fn call() {
             IDENT@5..6 "x"
           RPAREN@6..7 ")"
         WHITESPACE@7..8 " "
-        EXPR_BLOCK@8..16
+        BLOCK@8..16
           LBRACE@8..9 "{"
           WHITESPACE@9..10 " "
           EXPR_CALL@10..14
@@ -524,7 +524,7 @@ fn one_tuple() {
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
-        EXPR_BLOCK@7..15
+        BLOCK@7..15
           LBRACE@7..8 "{"
           WHITESPACE@8..9 " "
           EXPR_TUPLE@9..13
@@ -552,7 +552,7 @@ fn assign() {
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
-        EXPR_BLOCK@7..17
+        BLOCK@7..17
           LBRACE@7..8 "{"
           WHITESPACE@8..9 " "
           STMT_ASSIGN@9..15
@@ -586,7 +586,7 @@ mod defn_fn {
               LPAREN@4..5 "("
               RPAREN@5..6 ")"
             WHITESPACE@6..7 " "
-            EXPR_BLOCK@7..9
+            BLOCK@7..9
               LBRACE@7..8 "{"
               RBRACE@8..9 "}"
         "#);
@@ -607,7 +607,7 @@ mod defn_fn {
                 IDENT@5..6 "x"
               RPAREN@6..7 ")"
             WHITESPACE@7..8 " "
-            EXPR_BLOCK@8..10
+            BLOCK@8..10
               LBRACE@8..9 "{"
               RBRACE@9..10 "}"
         "#);
@@ -632,7 +632,7 @@ mod defn_fn {
                 IDENT@8..9 "y"
               RPAREN@9..10 ")"
             WHITESPACE@10..11 " "
-            EXPR_BLOCK@11..13
+            BLOCK@11..13
               LBRACE@11..12 "{"
               RBRACE@12..13 "}"
         "#);
@@ -1198,7 +1198,7 @@ mod expr_closure {
               BINDER@1..2
                 IDENT@1..2 "x"
               BAR@2..3 "|"
-            EXPR_BLOCK@3..5
+            BLOCK@3..5
               LBRACE@3..4 "{"
               RBRACE@4..5 "}"
         "#);

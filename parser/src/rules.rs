@@ -31,18 +31,22 @@ impl<'a> Parser<'a> {
         parser.expect_advance(KW_FN)?;
         parser.expect_advance(IDENT)?;
         parser.params_fn()?;
-        parser.expr_block()
+        parser.block()
     }
 
-    pub(crate) fn expr_block(&mut self) -> Result<()> {
-        let mut parser = self.with_node(EXPR_BLOCK);
+    pub(crate) fn block(&mut self) -> Result<()> {
+        let mut parser = self.with_node(BLOCK);
         parser.expect_advance(LBRACE)?;
+        parser.block_inner()?;
+        parser.expect_advance(RBRACE)?;
+        Ok(())
+    }
+
+    pub(crate) fn block_inner(&mut self) -> Result<()> {
+        let parser = self;
         loop {
             match parser.peek() {
-                RBRACE => {
-                    parser.advance();
-                    return Ok(());
-                }
+                RBRACE => return Ok(()),
                 KW_LET => parser.stmt_let()?,
                 KW_IF => parser.stmt_if()?,
                 token if token.starts(EXPR) => {
@@ -59,15 +63,12 @@ impl<'a> Parser<'a> {
                             parser.advance();
                             parser.with_node_at(checkpoint, STMT_EXPR);
                         }
-                        RBRACE => {
-                            parser.advance();
-                            return Ok(());
-                        }
+                        RBRACE => return Ok(()),
                         token => return Err(parser.expecation_error(token, EQUALS | SEMI | RBRACE)),
                     }
                 }
                 token => {
-                    return Err(parser.expecation_error(token, RBRACE | STMT.first() | EXPR.first()))
+                    return Err(parser.expecation_error(token, BLOCK_INNER.first()))
                 }
             }
         }
@@ -77,7 +78,7 @@ impl<'a> Parser<'a> {
         let mut parser = self.with_node(STMT_IF);
         parser.expect_advance(KW_IF)?;
         parser.expr()?;
-        parser.expr_block()?;
+        parser.block()?;
         // TODO(MH): We get a better error message if we know the follow set.
         if parser.peek() != KW_ELSE {
             return Ok(());
@@ -86,8 +87,8 @@ impl<'a> Parser<'a> {
         match parser.peek() {
             // TODO(MH): Turn the tail recursion into a loop?
             KW_IF => parser.stmt_if(),
-            LBRACE => parser.expr_block(),
-            token => Err(parser.expecation_error(token, STMT_IF.first() | EXPR_BLOCK.first())),
+            LBRACE => parser.block(),
+            token => Err(parser.expecation_error(token, STMT_IF.first() | BLOCK.first())),
         }
     }
 
@@ -127,11 +128,11 @@ impl<'a> Parser<'a> {
         let mut parser = self.with_node(EXPR_IF);
         parser.expect_advance(KW_IF)?;
         parser.expr()?;
-        parser.expr_block()?;
+        parser.block()?;
         parser.expect_advance(KW_ELSE)?;
         match parser.peek() {
             KW_IF => parser.expr_if(),
-            LBRACE => parser.expr_block(),
+            LBRACE => parser.block(),
             token => Err(parser.expecation_error(token, KW_IF | LBRACE)),
         }
     }
@@ -249,7 +250,7 @@ impl<'a> Parser<'a> {
                 self.with_node(EXPR_VAR).expect_advance(IDENT)?;
                 Ok(())
             }
-            LBRACE => self.expr_block(),
+            LBRACE => self.block(),
             LPAREN => self.expr_paren_or_tuple(),
             token if token.is(LITERALS) => {
                 self.with_node(EXPR_LIT).expect_advance(LITERALS)?;
