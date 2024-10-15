@@ -1,12 +1,18 @@
 use super::*;
 use felix_common::{srcloc::Mapper, Problem};
 
-use insta::{assert_snapshot, assert_debug_snapshot};
+use insta::{assert_debug_snapshot, assert_snapshot};
 
 fn parse(input: &str) -> ParseResult {
     let mapper = Mapper::new(input);
     let parser = Parser::new(input, &mapper);
     parser.run(Parser::program)
+}
+
+fn parse_success(input: &str) -> syntax::Node {
+    let result = parse(input);
+    assert!(result.problems.is_empty());
+    result.syntax
 }
 
 fn parse_expr(input: &str) -> ParseResult {
@@ -22,6 +28,12 @@ fn parse_expr(input: &str) -> ParseResult {
     let mapper = Mapper::new(&input);
     let parser = Parser::new(&input, &mapper);
     parser.run(expr)
+}
+
+fn parse_expr_success(input: &str) -> syntax::Node {
+    let result = parse_expr(input);
+    assert!(result.problems.is_empty());
+    result.syntax
 }
 
 fn dump_problems(problems: &Vec<Problem>) -> String {
@@ -558,6 +570,75 @@ fn assign() {
     assert_snapshot!(dump_problems(&result.problems), @"");
 }
 
+mod defn_fn {
+    use super::*;
+
+    #[test]
+    fn no_params() {
+        let syntax = parse_success("fn f() {}");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..9
+          DEFN_FN@0..9
+            KW_FN@0..2 "fn"
+            WHITESPACE@2..3 " "
+            IDENT@3..4 "f"
+            PARAMS_FN@4..6
+              LPAREN@4..5 "("
+              RPAREN@5..6 ")"
+            WHITESPACE@6..7 " "
+            EXPR_BLOCK@7..9
+              LBRACE@7..8 "{"
+              RBRACE@8..9 "}"
+        "#);
+    }
+
+    #[test]
+    fn one_param() {
+        let syntax = parse_success("fn f(x) {}");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..10
+          DEFN_FN@0..10
+            KW_FN@0..2 "fn"
+            WHITESPACE@2..3 " "
+            IDENT@3..4 "f"
+            PARAMS_FN@4..7
+              LPAREN@4..5 "("
+              BINDER@5..6
+                IDENT@5..6 "x"
+              RPAREN@6..7 ")"
+            WHITESPACE@7..8 " "
+            EXPR_BLOCK@8..10
+              LBRACE@8..9 "{"
+              RBRACE@9..10 "}"
+        "#);
+    }
+
+    #[test]
+    fn two_params() {
+        let syntax = parse_success("fn f(x, y) {}");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..13
+          DEFN_FN@0..13
+            KW_FN@0..2 "fn"
+            WHITESPACE@2..3 " "
+            IDENT@3..4 "f"
+            PARAMS_FN@4..10
+              LPAREN@4..5 "("
+              BINDER@5..6
+                IDENT@5..6 "x"
+              COMMA@6..7 ","
+              WHITESPACE@7..8 " "
+              BINDER@8..9
+                IDENT@8..9 "y"
+              RPAREN@9..10 ")"
+            WHITESPACE@10..11 " "
+            EXPR_BLOCK@11..13
+              LBRACE@11..12 "{"
+              RBRACE@12..13 "}"
+        "#);
+    }
+}
+
 mod level_infix {
     use super::*;
 
@@ -1014,6 +1095,99 @@ mod level_prefix {
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        "#);
+    }
+}
+
+mod expr_closure {
+    use super::*;
+
+    #[test]
+    fn one_param() {
+        let syntax = parse_expr_success("|x| 1");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..4
+          EXPR_CLOSURE@0..4
+            PARAMS_CLOSURE@0..3
+              BAR@0..1 "|"
+              BINDER@1..2
+                IDENT@1..2 "x"
+              BAR@2..3 "|"
+            EXPR_LIT@3..4
+              LIT_NAT@3..4 "1"
+        "#);
+    }
+
+    #[test]
+    fn two_params() {
+        let syntax = parse_expr_success("|x, y| 1");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..6
+          EXPR_CLOSURE@0..6
+            PARAMS_CLOSURE@0..5
+              BAR@0..1 "|"
+              BINDER@1..2
+                IDENT@1..2 "x"
+              COMMA@2..3 ","
+              BINDER@3..4
+                IDENT@3..4 "y"
+              BAR@4..5 "|"
+            EXPR_LIT@5..6
+              LIT_NAT@5..6 "1"
+        "#);
+    }
+
+    #[test]
+    fn body_atom() {
+        let syntax = parse_expr_success("|x| 1");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..4
+          EXPR_CLOSURE@0..4
+            PARAMS_CLOSURE@0..3
+              BAR@0..1 "|"
+              BINDER@1..2
+                IDENT@1..2 "x"
+              BAR@2..3 "|"
+            EXPR_LIT@3..4
+              LIT_NAT@3..4 "1"
+        "#);
+    }
+
+    #[test]
+    fn body_infix() {
+        let syntax = parse_expr_success("|x| 1 + 2");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..6
+          EXPR_CLOSURE@0..6
+            PARAMS_CLOSURE@0..3
+              BAR@0..1 "|"
+              BINDER@1..2
+                IDENT@1..2 "x"
+              BAR@2..3 "|"
+            EXPR_INFIX@3..6
+              EXPR_LIT@3..4
+                LIT_NAT@3..4 "1"
+              OP_INFIX@4..5
+                PLUS@4..5 "+"
+              EXPR_LIT@5..6
+                LIT_NAT@5..6 "2"
+        "#);
+    }
+
+    #[test]
+    fn body_block() {
+        let syntax = parse_expr_success("|x| {}");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          EXPR_CLOSURE@0..5
+            PARAMS_CLOSURE@0..3
+              BAR@0..1 "|"
+              BINDER@1..2
+                IDENT@1..2 "x"
+              BAR@2..3 "|"
+            EXPR_BLOCK@3..5
+              LBRACE@3..4 "{"
+              RBRACE@4..5 "}"
         "#);
     }
 }
