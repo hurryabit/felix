@@ -3,8 +3,8 @@ use super::syntax::{
 };
 use enumset::enum_set;
 
-use NodeKind::*;
 use AliasKind::*;
+use NodeKind::*;
 use TokenKind::*;
 
 #[allow(non_camel_case_types)]
@@ -21,7 +21,6 @@ use TokenKind::*;
     strum::EnumIter,
     strum::FromRepr,
 )]
-
 #[repr(u16)]
 #[enumset(repr = "u64")]
 pub(crate) enum AliasKind {
@@ -78,7 +77,7 @@ impl First for NodeKind {
             EXPR_LIT => LITERALS,
             EXPR_TUPLE => enum_set!(LPAREN),
             EXPR_PAREN => enum_set!(LPAREN),
-            PARAMS_CLOSURE => enum_set!(BAR),
+            PARAMS_CLOSURE => enum_set!(BAR | BAR_BAR),
             PARAMS_FN => enum_set!(LPAREN),
             BINDER => enum_set!(KW_MUT | IDENT),
             ARGS => enum_set!(LPAREN),
@@ -129,6 +128,55 @@ impl First for AliasKindSet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{parser::Result, Parser};
+
+    #[derive(Clone, Copy)]
+    pub(crate) enum NodeOrAliasKind {
+        Node(NodeKind),
+        Alias(AliasKind),
+    }
+    use NodeOrAliasKind::*;
+
+    impl First for NodeOrAliasKind {
+        fn first(self) -> TokenKindSet {
+            match self {
+                Node(node) => node.first(),
+                Alias(alias) => alias.first(),
+            }
+        }
+    }
+
+    impl std::fmt::Display for NodeOrAliasKind {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Node(node) => node.fmt(f),
+                Alias(alias) => alias.fmt(f),
+            }
+        }
+    }
+
+    fn compute_first<'a>(rule: fn(&mut Parser<'a>) -> Result<()>) -> TokenKindSet {
+        fn can_start<'a>(token: TokenKind, rule: fn(&mut Parser<'a>) -> Result<()>) -> bool {
+            if token.is(TRIVIA) {
+                return false;
+            }
+            let mut parser = Parser::fake_from_tokens(vec![token, TokenKind::UNKNOWN]);
+            let mut parser = parser.with_root(PROGRAM);
+            match rule(&mut parser) {
+                Ok(_) => true,
+                Err(problem) => {
+                    let start = problem.start.column;
+                    assert!(start <= 1);
+                    start == 1
+                }
+            }
+        }
+
+        TokenKindSet::all()
+            .into_iter()
+            .filter(|token| can_start(*token, rule))
+            .collect::<TokenKindSet>()
+    }
 
     #[test]
     fn token_kind_first_terminates() {
@@ -148,6 +196,37 @@ mod tests {
     fn alias_kind_first_terminates() {
         for alias in AliasKindSet::all() {
             alias.first();
+        }
+    }
+
+    #[test]
+    fn node_first_matches() {
+        let cases: Vec<(NodeOrAliasKind, fn(&mut Parser<'static>) -> Result<()>)> = vec![
+            (Alias(DEFN), Parser::defn),
+            (Node(DEFN_FN), Parser::defn_fn),
+            (Node(EXPR_BLOCK), Parser::expr_block),
+            (Node(STMT_IF), Parser::stmt_if),
+            (Node(STMT_LET), Parser::stmt_let),
+            (Alias(EXPR), Parser::expr),
+            (Node(EXPR_CLOSURE), Parser::expr_closure),
+            (Node(EXPR_IF), Parser::expr_if),
+            (Alias(LEVEL_INFIX), Parser::level_infix),
+            (Alias(LEVEL_PREFIX), Parser::level_prefix),
+            (Alias(LEVEL_POSTFIX), Parser::level_postfix),
+            (Alias(LEVEL_ATOM), Parser::level_atom),
+            (Node(PARAMS_FN), Parser::params_fn),
+            (Node(PARAMS_CLOSURE), Parser::params_closure),
+            (Node(BINDER), Parser::binder),
+            (Node(ARGS), Parser::args),
+        ];
+
+        for (node, rule) in cases {
+            assert_eq!(
+                compute_first(rule),
+                node.first(),
+                "implemented vs declared FIRST({})",
+                node
+            );
         }
     }
 }

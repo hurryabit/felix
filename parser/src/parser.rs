@@ -1,17 +1,25 @@
-use felix_common::{srcloc::Mapper, Problem};
+use felix_common::{srcloc::Mapper, Problem, SrcSpan};
 use logos::Logos;
 
 use crate::syntax::{self, NodeKind, TokenKind, TokenKindSet};
 use NodeKind::ERROR;
 use TokenKind::EOF;
 
+#[cfg(test)]
+static FAKE_INPUT: &str = "0123456789ABCDEF";
+// TODO(MH): Use `const fn` instead.
+#[cfg(test)]
+static FAKE_MAPPER: std::sync::LazyLock<Mapper> =
+    std::sync::LazyLock::new(|| Mapper::new(FAKE_INPUT));
+
 /// Stateful parser for the Rufus language.
 pub struct Parser<'a> {
     input: &'a str,
     mapper: &'a Mapper,
-    lexer: logos::Lexer<'a, TokenKind>,
-    peeked: Option<TokenKind>,
-    trivia: Vec<(TokenKind, std::ops::Range<usize>)>,
+    lexer:
+        Box<dyn Iterator<Item = (std::result::Result<TokenKind, ()>, std::ops::Range<usize>)> + 'a>,
+    peeked: Option<(TokenKind, SrcSpan<u32>)>,
+    trivia: Vec<(TokenKind, SrcSpan<u32>)>,
     open_node_stack: Vec<NodeKind>,
     builder: rowan::GreenNodeBuilder<'a>,
     problems: Vec<Problem>,
@@ -32,7 +40,27 @@ impl<'a> Parser<'a> {
         Self {
             input,
             mapper,
-            lexer: TokenKind::lexer(input),
+            lexer: Box::new(TokenKind::lexer(input).spanned()),
+            peeked: None,
+            trivia: Vec::new(),
+            open_node_stack: Vec::new(),
+            builder: rowan::GreenNodeBuilder::new(),
+            problems: Vec::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fake_from_tokens(tokens: impl IntoIterator<Item = TokenKind> + 'a) -> Self {
+
+        Self {
+            input: FAKE_INPUT,
+            mapper: &FAKE_MAPPER,
+            lexer: Box::new(
+                tokens
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, token)| (Ok(token), index..index + 1)),
+            ),
             peeked: None,
             trivia: Vec::new(),
             open_node_stack: Vec::new(),
@@ -57,7 +85,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn error(&mut self, message: String) -> Problem {
-        let span = self.lexer.span();
+        let span = self.peeked.unwrap().1;
         let node = *self.open_node_stack.last().unwrap();
         assert!(node != NodeKind::ERROR);
         let source = format!("parser/{}", node.to_string().to_ascii_lowercase());
@@ -67,29 +95,42 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn commit_trivia(&mut self) {
         for (token, span) in std::mem::take(&mut self.trivia).into_iter() {
-            self.builder.token(token.into(), &self.input[span]);
+            self.builder
+                .token(token.into(), &self.input[span.into_range()]);
         }
     }
 
-    pub(crate) fn peek(&mut self) -> TokenKind {
-        if let Some(token) = self.peeked {
-            return token;
+    fn peek_with_span(&mut self) -> (TokenKind, SrcSpan<u32>) {
+        if let Some(token_span) = self.peeked {
+            return token_span;
         }
-        let token = loop {
+        let token_span = loop {
             match self.lexer.next() {
-                None => break TokenKind::EOF,
-                Some(Err(_)) => break TokenKind::UNKNOWN,
-                Some(Ok(token)) => {
+                None => {
+                    let size = self.input.len() as u32;
+                    let span = SrcSpan {
+                        start: size,
+                        end: size,
+                    };
+                    break (TokenKind::EOF, span);
+                }
+                Some((token, range)) => {
+                    let token = token.unwrap_or(TokenKind::UNKNOWN);
+                    let span = SrcSpan::from_range(range);
                     if token.is_trivia() {
-                        self.trivia.push((token, self.lexer.span()));
+                        self.trivia.push((token, span));
                     } else {
-                        break token;
+                        break (token, span);
                     }
                 }
             }
         };
-        self.peeked = Some(token);
-        token
+        self.peeked = Some(token_span);
+        token_span
+    }
+
+    pub(crate) fn peek(&mut self) -> TokenKind {
+        self.peek_with_span().0
     }
 
     pub(crate) fn expecation_error(
@@ -111,18 +152,21 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn advance(&mut self) -> TokenKind {
-        let token = self.peek();
+        let (token, span) = self.peek_with_span();
         if token == EOF {
             panic!("advancing past end-of-file");
         }
         self.commit_trivia();
         self.builder
-            .token(token.into(), &self.input[self.lexer.span()]);
+            .token(token.into(), &self.input[span.into_range()]);
         self.peeked = None;
         token
     }
 
-    pub(crate) fn expect_advance(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
+    pub(crate) fn expect_advance(
+        &mut self,
+        expected: impl Into<TokenKindSet>,
+    ) -> Result<TokenKind> {
         self.expect(expected)?;
         Ok(self.advance())
     }

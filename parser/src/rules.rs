@@ -19,14 +19,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn defn(&mut self) -> Result<()> {
+    pub(crate) fn defn(&mut self) -> Result<()> {
         match self.peek() {
             KW_FN => self.defn_fn(),
             token => Err(self.expecation_error(token, DEFN.first())),
         }
     }
 
-    fn defn_fn(&mut self) -> Result<()> {
+    pub(crate) fn defn_fn(&mut self) -> Result<()> {
         let mut parser = self.with_node(DEFN_FN);
         parser.expect_advance(KW_FN)?;
         parser.expect_advance(IDENT)?;
@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
         parser.expr_block()
     }
 
-    fn expr_block(&mut self) -> Result<()> {
+    pub(crate) fn expr_block(&mut self) -> Result<()> {
         let mut parser = self.with_node(EXPR_BLOCK);
         parser.expect_advance(LBRACE)?;
         loop {
@@ -73,7 +73,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn stmt_if(&mut self) -> Result<()> {
+    pub(crate) fn stmt_if(&mut self) -> Result<()> {
         let mut parser = self.with_node(STMT_IF);
         parser.expect_advance(KW_IF)?;
         parser.expr()?;
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn stmt_let(&mut self) -> Result<()> {
+    pub(crate) fn stmt_let(&mut self) -> Result<()> {
         let mut parser = self.with_node(STMT_LET);
         parser.expect_advance(KW_LET)?;
         match parser.peek() {
@@ -117,13 +117,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expr_closure(&mut self) -> Result<()> {
+    pub(crate) fn expr_closure(&mut self) -> Result<()> {
         let mut parser = self.with_node(EXPR_CLOSURE);
         parser.params_closure()?;
         parser.expr()
     }
 
-    fn expr_if(&mut self) -> Result<()> {
+    pub(crate) fn expr_if(&mut self) -> Result<()> {
         let mut parser = self.with_node(EXPR_IF);
         parser.expect_advance(KW_IF)?;
         parser.expr()?;
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
     // trick of different binding powers on the left and right to resolve
     // associativity. See
     // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-    fn level_infix(&mut self) -> Result<()> {
+    pub(crate) fn level_infix(&mut self) -> Result<()> {
         fn binding_power(op: TokenKind) -> (u32, u32) {
             match op {
                 BAR_BAR => (15, 10),
@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
         res
     }
 
-    fn level_prefix(&mut self) -> Result<()> {
+    pub(crate) fn level_prefix(&mut self) -> Result<()> {
         let mut stack: Vec<rowan::Checkpoint> = Vec::new();
         let res = loop {
             let token = self.peek();
@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
         res
     }
 
-    fn level_postfix(&mut self) -> Result<()> {
+    pub(crate) fn level_postfix(&mut self) -> Result<()> {
         let checkpoint = self.checkpoint();
         self.level_atom()?;
         while self.peek().is(LPAREN | DOT) {
@@ -243,7 +243,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn level_atom(&mut self) -> Result<()> {
+    pub(crate) fn level_atom(&mut self) -> Result<()> {
         match self.peek() {
             IDENT => {
                 self.with_node(EXPR_VAR).expect_advance(IDENT)?;
@@ -299,11 +299,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn params_fn(&mut self) -> Result<()> {
+    pub(crate) fn params_fn(&mut self) -> Result<()> {
         self.with_node(PARAMS_FN).params(LPAREN, RPAREN)
     }
 
-    fn params_closure(&mut self) -> Result<()> {
+    pub(crate) fn params_closure(&mut self) -> Result<()> {
         let mut parser = self.with_node(PARAMS_CLOSURE);
         match parser.peek() {
             BAR => parser.params(BAR, BAR),
@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn binder(&mut self) -> Result<()> {
+    pub(crate) fn binder(&mut self) -> Result<()> {
         let mut parser = self.with_node(BINDER);
         if parser.expect_advance(KW_MUT | IDENT)? == KW_MUT {
             parser.expect_advance(IDENT)?;
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn args(&mut self) -> Result<()> {
+    pub(crate) fn args(&mut self) -> Result<()> {
         let mut parser = self.with_node(ARGS);
         parser.expect_advance(LPAREN)?;
         if parser.peek() == RPAREN {
@@ -338,15 +338,3 @@ impl<'a> Parser<'a> {
         }
     }
 }
-
-// Idea for testing first sets:
-// 1. For every token T in X.first(), check that parse(X) fails at the
-//    Unknown in the token sequence [T, Unknown].
-// 2. For every token T not in X.first(), check that parse(X) fails at
-//    the T in the token sequence [T].
-// The spans in problems should help identify where a parser failed.
-// For this to make sense, the implementation of parse(X) should not
-// by calling self.expect(X.first()) but rather check for what it actually
-// needs.
-// This idea can be extended for nodes like EXPR_BLOCK where the second
-// token is more interesting.

@@ -3,6 +3,12 @@ use std::fmt;
 use serde::Serialize;
 use tsify_next::Tsify;
 
+#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd)]
+pub struct SrcSpan<L> {
+    pub start: L,
+    pub end: L,
+}
+
 #[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
 pub struct SrcLoc {
@@ -58,6 +64,19 @@ impl fmt::Display for SrcLoc {
 impl fmt::Debug for SrcLoc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl SrcSpan<u32> {
+    pub fn from_range(range: std::ops::Range<usize>) -> Self {
+        Self {
+            start: range.start as u32,
+            end: range.end as u32,
+        }
+    }
+
+    pub fn into_range(self) -> std::ops::Range<usize> {
+        self.start as usize..self.end as usize
     }
 }
 
