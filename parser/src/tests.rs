@@ -387,12 +387,12 @@ fn two_good_fns() {
 
 #[test]
 fn one_good_fn_between_errors() {
-    let result = parse(" ? fn f() {} ? ");
+    let result = parse(" $ fn f() {} $ ");
     assert_debug_snapshot!(result.syntax, @r#"
     PROGRAM@0..15
       WHITESPACE@0..1 " "
       ERROR@1..2
-        UNKNOWN@1..2 "?"
+        UNKNOWN@1..2 "$"
       WHITESPACE@2..3 " "
       DEFN_FN@3..12
         KW_FN@3..5 "fn"
@@ -407,7 +407,7 @@ fn one_good_fn_between_errors() {
           RBRACE@11..12 "}"
       WHITESPACE@12..13 " "
       ERROR@13..14
-        UNKNOWN@13..14 "?"
+        UNKNOWN@13..14 "$"
       WHITESPACE@14..15 " "
     "#);
     assert_snapshot!(dump_problems(&result.problems), @r#"
@@ -1001,7 +1001,7 @@ mod level_infix {
 
     #[test]
     fn or_or_err() {
-        let result = parse_expr("A || B || ?");
+        let result = parse_expr("A || B || $");
         assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..7
           EXPR_INFIX@0..6
@@ -1015,7 +1015,7 @@ mod level_infix {
               OP_INFIX@4..6
                 BAR_BAR@4..6 "||"
           ERROR@6..7
-            UNKNOWN@6..7 "?"
+            UNKNOWN@6..7 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
@@ -1024,7 +1024,7 @@ mod level_infix {
 
     #[test]
     fn add_add_err() {
-        let result = parse_expr("A + B + ?");
+        let result = parse_expr("A + B + $");
         assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..5
           EXPR_INFIX@0..4
@@ -1038,7 +1038,7 @@ mod level_infix {
             OP_INFIX@3..4
               PLUS@3..4 "+"
           ERROR@4..5
-            UNKNOWN@4..5 "?"
+            UNKNOWN@4..5 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
@@ -1082,7 +1082,7 @@ mod level_prefix {
 
     #[test]
     fn not_not_err() {
-        let result = parse_expr("!!?");
+        let result = parse_expr("!!$");
         assert_debug_snapshot!(result.syntax, @r#"
         PROGRAM@0..3
           EXPR_PREFIX@0..2
@@ -1092,7 +1092,7 @@ mod level_prefix {
               OP_PREFIX@1..2
                 BANG@1..2 "!"
           ERROR@2..3
-            UNKNOWN@2..3 "?"
+            UNKNOWN@2..3 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
         ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
