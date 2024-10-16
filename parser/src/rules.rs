@@ -243,7 +243,6 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             LPAREN => self.expr_paren_or_tuple(follow),
-            token if token.starts(BLOCK) => self.block(follow),
             token if token.is(LITERALS) => {
                 self.with_node(EXPR_LIT).expect_advance(LITERALS)?;
                 Ok(())

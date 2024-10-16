@@ -1150,7 +1150,7 @@ mod level_infix {
             UNKNOWN@6..7 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 
@@ -1173,7 +1173,7 @@ mod level_infix {
             UNKNOWN@4..5 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 }
@@ -1227,7 +1227,7 @@ mod level_prefix {
             UNKNOWN@2..3 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 }

@@ -110,7 +110,7 @@ impl First for AliasKind {
             LEVEL_PREFIX => EXPR_PREFIX.first() | LEVEL_POSTFIX.first(),
             LEVEL_POSTFIX => LEVEL_ATOM.first(),
             LEVEL_ATOM => {
-                (EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN | BLOCK).first()
+                (EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN).first()
             }
         }
     }
