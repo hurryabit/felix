@@ -112,8 +112,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn expr(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
         match self.peek() {
             token if token.starts(EXPR_CLOSURE) => self.expr_closure(follow),
-            token if token.starts(EXPR_IF) => self.expr_if(follow),
-            token if token.starts(LEVEL_INFIX) => self.level_infix(follow),
+            token if token.starts(LEVEL_TERTIARY) => self.level_tertiary(follow),
             token => Err(self.expecation_error(token, EXPR.first())),
         }
     }
@@ -124,17 +123,18 @@ impl<'a> Parser<'a> {
         parser.expr(follow)
     }
 
-    pub(crate) fn expr_if(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
-        let mut parser = self.with_node(EXPR_IF);
-        parser.expect_advance(KW_IF)?;
-        parser.expr(BLOCK.first())?;
-        parser.block(KW_ELSE)?;
-        parser.expect_advance(KW_ELSE)?;
-        match parser.peek() {
-            token if token.starts(EXPR_IF) => parser.expr_if(follow),
-            token if token.starts(BLOCK) => parser.block(follow),
-            token => Err(parser.expecation_error(token, (EXPR_IF | BLOCK).first())),
+    pub(crate) fn level_tertiary(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let follow = follow.into();
+        let checkpoint = self.checkpoint();
+        self.level_infix(follow | QUERY)?;
+        if self.expect(follow | QUERY)? != QUERY {
+            return Ok(());
         }
+        let mut parser = self.with_node_at(checkpoint, EXPR_TERTIARY);
+        parser.advance();
+        parser.level_tertiary(COLON)?;
+        parser.expect_advance(COLON)?;
+        parser.level_tertiary(follow)
     }
 
     // NOTE(MH): We use Pratt parsing to resolve precendence. We use matklad's

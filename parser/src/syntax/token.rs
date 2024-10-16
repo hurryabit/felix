@@ -62,6 +62,8 @@ pub enum TokenKind {
     BAR,
     #[token("||")]
     BAR_BAR,
+    #[token(":")]
+    COLON,
     #[token(",")]
     COMMA,
     #[token(".")]
@@ -80,6 +82,8 @@ pub enum TokenKind {
     MINUS,
     #[token("->")]
     MINUS_RANGLE,
+    #[token("?")]
+    QUERY,
     #[token(">=")]
     RANGLE_EQUALS,
     #[token(";")]

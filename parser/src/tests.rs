@@ -1,7 +1,6 @@
 use super::*;
 use felix_common::{srcloc::Mapper, Problem};
 
-
 use insta::{assert_debug_snapshot, assert_snapshot};
 
 fn parse(input: &str) -> ParseResult {
@@ -476,7 +475,7 @@ fn missing_infix() {
         RBRACE@14..15 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @r#"
-    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | SEMI. [parser/block]
+    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | QUERY | SEMI. [parser/block]
     "#);
 }
 
@@ -636,6 +635,138 @@ mod defn_fn {
             BLOCK@11..13
               LBRACE@11..12 "{"
               RBRACE@12..13 "}"
+        "#);
+    }
+}
+
+mod level_tertiary {
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let syntax = parse_expr_success("A ? B : C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          EXPR_TERTIARY@0..5
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            QUERY@1..2 "?"
+            EXPR_VAR@2..3
+              IDENT@2..3 "B"
+            COLON@3..4 ":"
+            EXPR_VAR@4..5
+              IDENT@4..5 "C"
+        "#);
+    }
+
+    #[test]
+    fn precedence() {
+        let syntax = parse_expr_success("A1 || A2 ? B1 || B2 : C1 || C2");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..20
+          EXPR_TERTIARY@0..20
+            EXPR_INFIX@0..6
+              EXPR_VAR@0..2
+                IDENT@0..2 "A1"
+              OP_INFIX@2..4
+                BAR_BAR@2..4 "||"
+              EXPR_VAR@4..6
+                IDENT@4..6 "A2"
+            QUERY@6..7 "?"
+            EXPR_INFIX@7..13
+              EXPR_VAR@7..9
+                IDENT@7..9 "B1"
+              OP_INFIX@9..11
+                BAR_BAR@9..11 "||"
+              EXPR_VAR@11..13
+                IDENT@11..13 "B2"
+            COLON@13..14 ":"
+            EXPR_INFIX@14..20
+              EXPR_VAR@14..16
+                IDENT@14..16 "C1"
+              OP_INFIX@16..18
+                BAR_BAR@16..18 "||"
+              EXPR_VAR@18..20
+                IDENT@18..20 "C2"
+        "#);
+    }
+
+    #[test]
+    fn right_associative() {
+        let syntax = parse_expr_success("A ? B : C ? D : E");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..9
+          EXPR_TERTIARY@0..9
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            QUERY@1..2 "?"
+            EXPR_VAR@2..3
+              IDENT@2..3 "B"
+            COLON@3..4 ":"
+            EXPR_TERTIARY@4..9
+              EXPR_VAR@4..5
+                IDENT@4..5 "C"
+              QUERY@5..6 "?"
+              EXPR_VAR@6..7
+                IDENT@6..7 "D"
+              COLON@7..8 ":"
+              EXPR_VAR@8..9
+                IDENT@8..9 "E"
+        "#);
+    }
+
+    #[test]
+    fn then_tertiary() {
+        let syntax = parse_expr_success("A ? B ? C : D : E");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..9
+          EXPR_TERTIARY@0..9
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            QUERY@1..2 "?"
+            EXPR_TERTIARY@2..7
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+              QUERY@3..4 "?"
+              EXPR_VAR@4..5
+                IDENT@4..5 "C"
+              COLON@5..6 ":"
+              EXPR_VAR@6..7
+                IDENT@6..7 "D"
+            COLON@7..8 ":"
+            EXPR_VAR@8..9
+              IDENT@8..9 "E"
+        "#);
+    }
+
+    #[test]
+    fn then_else_tertiary() {
+        let syntax = parse_expr_success("A ? B ? C : D : E ? F : G");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..13
+          EXPR_TERTIARY@0..13
+            EXPR_VAR@0..1
+              IDENT@0..1 "A"
+            QUERY@1..2 "?"
+            EXPR_TERTIARY@2..7
+              EXPR_VAR@2..3
+                IDENT@2..3 "B"
+              QUERY@3..4 "?"
+              EXPR_VAR@4..5
+                IDENT@4..5 "C"
+              COLON@5..6 ":"
+              EXPR_VAR@6..7
+                IDENT@6..7 "D"
+            COLON@7..8 ":"
+            EXPR_TERTIARY@8..13
+              EXPR_VAR@8..9
+                IDENT@8..9 "E"
+              QUERY@9..10 "?"
+              EXPR_VAR@10..11
+                IDENT@10..11 "F"
+              COLON@11..12 ":"
+              EXPR_VAR@12..13
+                IDENT@12..13 "G"
         "#);
     }
 }
