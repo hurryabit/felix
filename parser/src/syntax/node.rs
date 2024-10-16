@@ -26,7 +26,6 @@ pub enum NodeKind {
     STMT_IF,
     STMT_LET,
 
-    EXPR_CLOSURE,
     EXPR_TERTIARY,
     EXPR_INFIX,
     EXPR_PREFIX,
@@ -35,10 +34,10 @@ pub enum NodeKind {
     EXPR_VAR,
     EXPR_LIT,
     EXPR_TUPLE,
+    EXPR_FN,
     EXPR_PAREN,
 
-    PARAMS_CLOSURE,
-    PARAMS_FN,
+    PARAMS,
     BINDER,
     ARGS,
 

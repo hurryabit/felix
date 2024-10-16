@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
         let mut parser = self.with_node(DEFN_FN);
         parser.expect_advance(KW_FN)?;
         parser.expect_advance(IDENT)?;
-        parser.params_fn(BLOCK.first())?;
+        parser.params(BLOCK.first())?;
         parser.block(follow)
     }
 
@@ -110,17 +110,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn expr(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
-        match self.peek() {
-            token if token.starts(EXPR_CLOSURE) => self.expr_closure(follow),
-            token if token.starts(LEVEL_TERTIARY) => self.level_tertiary(follow),
-            token => Err(self.expecation_error(token, EXPR.first())),
-        }
-    }
-
-    pub(crate) fn expr_closure(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
-        let mut parser = self.with_node(EXPR_CLOSURE);
-        parser.params_closure(EXPR.first())?;
-        parser.expr(follow)
+        self.level_tertiary(follow)
     }
 
     pub(crate) fn level_tertiary(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
@@ -258,6 +248,7 @@ impl<'a> Parser<'a> {
                 self.with_node(EXPR_LIT).expect_advance(LITERALS)?;
                 Ok(())
             }
+            token if token.starts(EXPR_FN) => self.expr_fn(follow),
             token => Err(self.expecation_error(token, LEVEL_ATOM.first())),
         }
     }
@@ -288,33 +279,25 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn params(&mut self, ldelim: TokenKind, rdelim: TokenKind) -> Result<()> {
-        self.expect_advance(ldelim)?;
-        if self.peek() == rdelim {
-            self.expect_advance(rdelim)?;
+    pub(crate) fn expr_fn(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let mut parser = self.with_node(EXPR_FN);
+        parser.expect_advance(KW_FN)?;
+        parser.params(BLOCK.first())?;
+        parser.block(follow)
+    }
+
+    pub(crate) fn params(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
+        let mut parser = self.with_node(PARAMS);
+        parser.expect_advance(LPAREN)?;
+        if parser.peek() == RPAREN {
+            parser.advance();
             return Ok(());
         }
         loop {
-            self.binder(COMMA | rdelim)?;
-            if self.expect_advance(COMMA | rdelim)? == rdelim {
+            parser.binder(COMMA | RPAREN)?;
+            if parser.expect_advance(COMMA | RPAREN)? == RPAREN {
                 return Ok(());
             }
-        }
-    }
-
-    pub(crate) fn params_fn(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
-        self.with_node(PARAMS_FN).params(LPAREN, RPAREN)
-    }
-
-    pub(crate) fn params_closure(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
-        let mut parser = self.with_node(PARAMS_CLOSURE);
-        match parser.peek() {
-            BAR => parser.params(BAR, BAR),
-            BAR_BAR => {
-                parser.advance();
-                Ok(())
-            }
-            token => Err(parser.expecation_error(token, PARAMS_CLOSURE.first())),
         }
     }
 

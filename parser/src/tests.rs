@@ -71,7 +71,7 @@ fn webui_sample() {
     fn fib_tailrec(n) {
         let mut a = 0;
         let mut b = 1;
-        let rec go = |n| {
+        let rec go = fn(n) {
             if n > 0 {
                 let c = b;
                 b = a + b;
@@ -85,7 +85,7 @@ fn webui_sample() {
     "#,
     );
     assert_debug_snapshot!(result.syntax, @r#"
-    PROGRAM@0..504
+    PROGRAM@0..506
       WHITESPACE@0..5 "\n    "
       COMMENT@5..40 "// Recursive version  ..."
       WHITESPACE@40..44 "    "
@@ -93,7 +93,7 @@ fn webui_sample() {
         KW_FN@44..46 "fn"
         WHITESPACE@46..47 " "
         IDENT@47..54 "fib_rec"
-        PARAMS_FN@54..57
+        PARAMS@54..57
           LPAREN@54..55 "("
           BINDER@55..56
             IDENT@55..56 "n"
@@ -166,17 +166,17 @@ fn webui_sample() {
       WHITESPACE@166..172 "\n\n    "
       COMMENT@172..222 "// Loop-via-tail-recu ..."
       WHITESPACE@222..226 "    "
-      DEFN_FN@226..499
+      DEFN_FN@226..501
         KW_FN@226..228 "fn"
         WHITESPACE@228..229 " "
         IDENT@229..240 "fib_tailrec"
-        PARAMS_FN@240..243
+        PARAMS@240..243
           LPAREN@240..241 "("
           BINDER@241..242
             IDENT@241..242 "n"
           RPAREN@242..243 ")"
         WHITESPACE@243..244 " "
-        BLOCK@244..499
+        BLOCK@244..501
           LBRACE@244..245 "{"
           WHITESPACE@245..254 "\n        "
           STMT_LET@254..268
@@ -207,7 +207,7 @@ fn webui_sample() {
               LIT_NAT@289..290 "1"
             SEMI@290..291 ";"
           WHITESPACE@291..300 "\n        "
-          STMT_LET@300..468
+          STMT_LET@300..470
             KW_LET@300..303 "let"
             WHITESPACE@303..304 " "
             KW_REC@304..307 "rec"
@@ -217,108 +217,109 @@ fn webui_sample() {
             WHITESPACE@310..311 " "
             EQUALS@311..312 "="
             WHITESPACE@312..313 " "
-            EXPR_CLOSURE@313..467
-              PARAMS_CLOSURE@313..316
-                BAR@313..314 "|"
-                BINDER@314..315
-                  IDENT@314..315 "n"
-                BAR@315..316 "|"
-              WHITESPACE@316..317 " "
-              BLOCK@317..467
-                LBRACE@317..318 "{"
-                WHITESPACE@318..331 "\n            "
-                STMT_IF@331..457
-                  KW_IF@331..333 "if"
-                  WHITESPACE@333..334 " "
-                  EXPR_INFIX@334..339
-                    EXPR_VAR@334..335
-                      IDENT@334..335 "n"
-                    WHITESPACE@335..336 " "
-                    OP_INFIX@336..337
-                      RANGLE@336..337 ">"
+            EXPR_FN@313..469
+              KW_FN@313..315 "fn"
+              PARAMS@315..318
+                LPAREN@315..316 "("
+                BINDER@316..317
+                  IDENT@316..317 "n"
+                RPAREN@317..318 ")"
+              WHITESPACE@318..319 " "
+              BLOCK@319..469
+                LBRACE@319..320 "{"
+                WHITESPACE@320..333 "\n            "
+                STMT_IF@333..459
+                  KW_IF@333..335 "if"
+                  WHITESPACE@335..336 " "
+                  EXPR_INFIX@336..341
+                    EXPR_VAR@336..337
+                      IDENT@336..337 "n"
                     WHITESPACE@337..338 " "
-                    EXPR_LIT@338..339
-                      LIT_NAT@338..339 "0"
-                  WHITESPACE@339..340 " "
-                  BLOCK@340..457
-                    LBRACE@340..341 "{"
-                    WHITESPACE@341..358 "\n                "
-                    STMT_LET@358..368
-                      KW_LET@358..361 "let"
-                      WHITESPACE@361..362 " "
-                      BINDER@362..363
-                        IDENT@362..363 "c"
+                    OP_INFIX@338..339
+                      RANGLE@338..339 ">"
+                    WHITESPACE@339..340 " "
+                    EXPR_LIT@340..341
+                      LIT_NAT@340..341 "0"
+                  WHITESPACE@341..342 " "
+                  BLOCK@342..459
+                    LBRACE@342..343 "{"
+                    WHITESPACE@343..360 "\n                "
+                    STMT_LET@360..370
+                      KW_LET@360..363 "let"
                       WHITESPACE@363..364 " "
-                      EQUALS@364..365 "="
+                      BINDER@364..365
+                        IDENT@364..365 "c"
                       WHITESPACE@365..366 " "
-                      EXPR_VAR@366..367
-                        IDENT@366..367 "b"
-                      SEMI@367..368 ";"
-                    WHITESPACE@368..385 "\n                "
-                    STMT_ASSIGN@385..395
-                      EXPR_VAR@385..386
-                        IDENT@385..386 "b"
-                      WHITESPACE@386..387 " "
-                      EQUALS@387..388 "="
+                      EQUALS@366..367 "="
+                      WHITESPACE@367..368 " "
+                      EXPR_VAR@368..369
+                        IDENT@368..369 "b"
+                      SEMI@369..370 ";"
+                    WHITESPACE@370..387 "\n                "
+                    STMT_ASSIGN@387..397
+                      EXPR_VAR@387..388
+                        IDENT@387..388 "b"
                       WHITESPACE@388..389 " "
-                      EXPR_INFIX@389..394
-                        EXPR_VAR@389..390
-                          IDENT@389..390 "a"
-                        WHITESPACE@390..391 " "
-                        OP_INFIX@391..392
-                          PLUS@391..392 "+"
+                      EQUALS@389..390 "="
+                      WHITESPACE@390..391 " "
+                      EXPR_INFIX@391..396
+                        EXPR_VAR@391..392
+                          IDENT@391..392 "a"
                         WHITESPACE@392..393 " "
-                        EXPR_VAR@393..394
-                          IDENT@393..394 "b"
-                      SEMI@394..395 ";"
-                    WHITESPACE@395..412 "\n                "
-                    STMT_ASSIGN@412..418
-                      EXPR_VAR@412..413
-                        IDENT@412..413 "a"
-                      WHITESPACE@413..414 " "
-                      EQUALS@414..415 "="
+                        OP_INFIX@393..394
+                          PLUS@393..394 "+"
+                        WHITESPACE@394..395 " "
+                        EXPR_VAR@395..396
+                          IDENT@395..396 "b"
+                      SEMI@396..397 ";"
+                    WHITESPACE@397..414 "\n                "
+                    STMT_ASSIGN@414..420
+                      EXPR_VAR@414..415
+                        IDENT@414..415 "a"
                       WHITESPACE@415..416 " "
-                      EXPR_VAR@416..417
-                        IDENT@416..417 "c"
-                      SEMI@417..418 ";"
-                    WHITESPACE@418..435 "\n                "
-                    STMT_EXPR@435..443
-                      EXPR_CALL@435..442
-                        EXPR_VAR@435..437
-                          IDENT@435..437 "go"
-                        ARGS@437..442
-                          LPAREN@437..438 "("
-                          EXPR_INFIX@438..441
-                            EXPR_VAR@438..439
-                              IDENT@438..439 "n"
-                            OP_INFIX@439..440
-                              MINUS@439..440 "-"
-                            EXPR_LIT@440..441
-                              LIT_NAT@440..441 "1"
-                          RPAREN@441..442 ")"
-                      SEMI@442..443 ";"
-                    WHITESPACE@443..456 "\n            "
-                    RBRACE@456..457 "}"
-                WHITESPACE@457..466 "\n        "
-                RBRACE@466..467 "}"
-            SEMI@467..468 ";"
-          WHITESPACE@468..477 "\n        "
-          STMT_EXPR@477..483
-            EXPR_CALL@477..482
-              EXPR_VAR@477..479
-                IDENT@477..479 "go"
-              ARGS@479..482
-                LPAREN@479..480 "("
-                EXPR_VAR@480..481
-                  IDENT@480..481 "n"
-                RPAREN@481..482 ")"
-            SEMI@482..483 ";"
-          WHITESPACE@483..492 "\n        "
-          EXPR_VAR@492..493
-            IDENT@492..493 "a"
-          WHITESPACE@493..498 "\n    "
-          RBRACE@498..499 "}"
-      WHITESPACE@499..504 "\n    "
+                      EQUALS@416..417 "="
+                      WHITESPACE@417..418 " "
+                      EXPR_VAR@418..419
+                        IDENT@418..419 "c"
+                      SEMI@419..420 ";"
+                    WHITESPACE@420..437 "\n                "
+                    STMT_EXPR@437..445
+                      EXPR_CALL@437..444
+                        EXPR_VAR@437..439
+                          IDENT@437..439 "go"
+                        ARGS@439..444
+                          LPAREN@439..440 "("
+                          EXPR_INFIX@440..443
+                            EXPR_VAR@440..441
+                              IDENT@440..441 "n"
+                            OP_INFIX@441..442
+                              MINUS@441..442 "-"
+                            EXPR_LIT@442..443
+                              LIT_NAT@442..443 "1"
+                          RPAREN@443..444 ")"
+                      SEMI@444..445 ";"
+                    WHITESPACE@445..458 "\n            "
+                    RBRACE@458..459 "}"
+                WHITESPACE@459..468 "\n        "
+                RBRACE@468..469 "}"
+            SEMI@469..470 ";"
+          WHITESPACE@470..479 "\n        "
+          STMT_EXPR@479..485
+            EXPR_CALL@479..484
+              EXPR_VAR@479..481
+                IDENT@479..481 "go"
+              ARGS@481..484
+                LPAREN@481..482 "("
+                EXPR_VAR@482..483
+                  IDENT@482..483 "n"
+                RPAREN@483..484 ")"
+            SEMI@484..485 ";"
+          WHITESPACE@485..494 "\n        "
+          EXPR_VAR@494..495
+            IDENT@494..495 "a"
+          WHITESPACE@495..500 "\n    "
+          RBRACE@500..501 "}"
+      WHITESPACE@501..506 "\n    "
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
 }
@@ -341,7 +342,7 @@ fn one_good_fn() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..6
+        PARAMS@4..6
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
@@ -361,7 +362,7 @@ fn two_good_fns() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..6
+        PARAMS@4..6
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
@@ -373,7 +374,7 @@ fn two_good_fns() {
         KW_FN@10..12 "fn"
         WHITESPACE@12..13 " "
         IDENT@13..14 "g"
-        PARAMS_FN@14..16
+        PARAMS@14..16
           LPAREN@14..15 "("
           RPAREN@15..16 ")"
         WHITESPACE@16..17 " "
@@ -397,7 +398,7 @@ fn one_good_fn_between_errors() {
         KW_FN@3..5 "fn"
         WHITESPACE@5..6 " "
         IDENT@6..7 "f"
-        PARAMS_FN@7..9
+        PARAMS@7..9
           LPAREN@7..8 "("
           RPAREN@8..9 ")"
         WHITESPACE@9..10 " "
@@ -424,7 +425,7 @@ fn infix() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..7
+        PARAMS@4..7
           LPAREN@4..5 "("
           BINDER@5..6
             IDENT@5..6 "x"
@@ -457,7 +458,7 @@ fn missing_infix() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..7
+        PARAMS@4..7
           LPAREN@4..5 "("
           BINDER@5..6
             IDENT@5..6 "x"
@@ -488,7 +489,7 @@ fn call() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..7
+        PARAMS@4..7
           LPAREN@4..5 "("
           BINDER@5..6
             IDENT@5..6 "x"
@@ -520,7 +521,7 @@ fn one_tuple() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..6
+        PARAMS@4..6
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
@@ -548,7 +549,7 @@ fn assign() {
         KW_FN@0..2 "fn"
         WHITESPACE@2..3 " "
         IDENT@3..4 "f"
-        PARAMS_FN@4..6
+        PARAMS@4..6
           LPAREN@4..5 "("
           RPAREN@5..6 ")"
         WHITESPACE@6..7 " "
@@ -582,7 +583,7 @@ mod defn_fn {
             KW_FN@0..2 "fn"
             WHITESPACE@2..3 " "
             IDENT@3..4 "f"
-            PARAMS_FN@4..6
+            PARAMS@4..6
               LPAREN@4..5 "("
               RPAREN@5..6 ")"
             WHITESPACE@6..7 " "
@@ -601,7 +602,7 @@ mod defn_fn {
             KW_FN@0..2 "fn"
             WHITESPACE@2..3 " "
             IDENT@3..4 "f"
-            PARAMS_FN@4..7
+            PARAMS@4..7
               LPAREN@4..5 "("
               BINDER@5..6
                 IDENT@5..6 "x"
@@ -622,7 +623,7 @@ mod defn_fn {
             KW_FN@0..2 "fn"
             WHITESPACE@2..3 " "
             IDENT@3..4 "f"
-            PARAMS_FN@4..10
+            PARAMS@4..10
               LPAREN@4..5 "("
               BINDER@5..6
                 IDENT@5..6 "x"
@@ -1149,7 +1150,7 @@ mod level_infix {
             UNKNOWN@6..7 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:7-1:8: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 
@@ -1172,7 +1173,7 @@ mod level_infix {
             UNKNOWN@4..5 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:5-1:6: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 }
@@ -1226,113 +1227,135 @@ mod level_prefix {
             UNKNOWN@2..3 "$"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
+        ERROR 1:3-1:4: Found UNKNOWN, expected KW_FALSE | KW_FN | KW_TRUE | LBRACE | LPAREN | BANG | IDENT | LIT_NAT. [parser/program]
         "#);
     }
 }
 
-mod expr_closure {
+mod expr_fn {
     use super::*;
 
     #[test]
     fn no_params() {
-        let syntax = parse_expr_success("|| 1");
+        let syntax = parse_expr_success("fn() { 1 }");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..3
-          EXPR_CLOSURE@0..3
-            PARAMS_CLOSURE@0..2
-              BAR_BAR@0..2 "||"
-            EXPR_LIT@2..3
-              LIT_NAT@2..3 "1"
+        PROGRAM@0..7
+          EXPR_FN@0..7
+            KW_FN@0..2 "fn"
+            PARAMS@2..4
+              LPAREN@2..3 "("
+              RPAREN@3..4 ")"
+            BLOCK@4..7
+              LBRACE@4..5 "{"
+              EXPR_LIT@5..6
+                LIT_NAT@5..6 "1"
+              RBRACE@6..7 "}"
         "#);
     }
 
     #[test]
     fn one_param() {
-        let syntax = parse_expr_success("|x| 1");
+        let syntax = parse_expr_success("fn(x) { 1 }");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..4
-          EXPR_CLOSURE@0..4
-            PARAMS_CLOSURE@0..3
-              BAR@0..1 "|"
-              BINDER@1..2
-                IDENT@1..2 "x"
-              BAR@2..3 "|"
-            EXPR_LIT@3..4
-              LIT_NAT@3..4 "1"
+        PROGRAM@0..8
+          EXPR_FN@0..8
+            KW_FN@0..2 "fn"
+            PARAMS@2..5
+              LPAREN@2..3 "("
+              BINDER@3..4
+                IDENT@3..4 "x"
+              RPAREN@4..5 ")"
+            BLOCK@5..8
+              LBRACE@5..6 "{"
+              EXPR_LIT@6..7
+                LIT_NAT@6..7 "1"
+              RBRACE@7..8 "}"
         "#);
     }
 
     #[test]
     fn two_params() {
-        let syntax = parse_expr_success("|x, y| 1");
+        let syntax = parse_expr_success("fn(x, y) { 1 }");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..6
-          EXPR_CLOSURE@0..6
-            PARAMS_CLOSURE@0..5
-              BAR@0..1 "|"
-              BINDER@1..2
-                IDENT@1..2 "x"
-              COMMA@2..3 ","
+        PROGRAM@0..10
+          EXPR_FN@0..10
+            KW_FN@0..2 "fn"
+            PARAMS@2..7
+              LPAREN@2..3 "("
               BINDER@3..4
-                IDENT@3..4 "y"
-              BAR@4..5 "|"
-            EXPR_LIT@5..6
-              LIT_NAT@5..6 "1"
+                IDENT@3..4 "x"
+              COMMA@4..5 ","
+              BINDER@5..6
+                IDENT@5..6 "y"
+              RPAREN@6..7 ")"
+            BLOCK@7..10
+              LBRACE@7..8 "{"
+              EXPR_LIT@8..9
+                LIT_NAT@8..9 "1"
+              RBRACE@9..10 "}"
         "#);
     }
 
     #[test]
     fn body_atom() {
-        let syntax = parse_expr_success("|x| 1");
+        let syntax = parse_expr_success("fn(x) { 1 }");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..4
-          EXPR_CLOSURE@0..4
-            PARAMS_CLOSURE@0..3
-              BAR@0..1 "|"
-              BINDER@1..2
-                IDENT@1..2 "x"
-              BAR@2..3 "|"
-            EXPR_LIT@3..4
-              LIT_NAT@3..4 "1"
+        PROGRAM@0..8
+          EXPR_FN@0..8
+            KW_FN@0..2 "fn"
+            PARAMS@2..5
+              LPAREN@2..3 "("
+              BINDER@3..4
+                IDENT@3..4 "x"
+              RPAREN@4..5 ")"
+            BLOCK@5..8
+              LBRACE@5..6 "{"
+              EXPR_LIT@6..7
+                LIT_NAT@6..7 "1"
+              RBRACE@7..8 "}"
         "#);
     }
 
     #[test]
     fn body_infix() {
-        let syntax = parse_expr_success("|x| 1 + 2");
+        let syntax = parse_expr_success("fn(x) { 1 + 2 }");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..6
-          EXPR_CLOSURE@0..6
-            PARAMS_CLOSURE@0..3
-              BAR@0..1 "|"
-              BINDER@1..2
-                IDENT@1..2 "x"
-              BAR@2..3 "|"
-            EXPR_INFIX@3..6
-              EXPR_LIT@3..4
-                LIT_NAT@3..4 "1"
-              OP_INFIX@4..5
-                PLUS@4..5 "+"
-              EXPR_LIT@5..6
-                LIT_NAT@5..6 "2"
+        PROGRAM@0..10
+          EXPR_FN@0..10
+            KW_FN@0..2 "fn"
+            PARAMS@2..5
+              LPAREN@2..3 "("
+              BINDER@3..4
+                IDENT@3..4 "x"
+              RPAREN@4..5 ")"
+            BLOCK@5..10
+              LBRACE@5..6 "{"
+              EXPR_INFIX@6..9
+                EXPR_LIT@6..7
+                  LIT_NAT@6..7 "1"
+                OP_INFIX@7..8
+                  PLUS@7..8 "+"
+                EXPR_LIT@8..9
+                  LIT_NAT@8..9 "2"
+              RBRACE@9..10 "}"
         "#);
     }
 
     #[test]
     fn body_block() {
-        let syntax = parse_expr_success("|x| {}");
+        let syntax = parse_expr_success("fn(x) {}");
         assert_debug_snapshot!(syntax, @r#"
-        PROGRAM@0..5
-          EXPR_CLOSURE@0..5
-            PARAMS_CLOSURE@0..3
-              BAR@0..1 "|"
-              BINDER@1..2
-                IDENT@1..2 "x"
-              BAR@2..3 "|"
-            BLOCK@3..5
-              LBRACE@3..4 "{"
-              RBRACE@4..5 "}"
+        PROGRAM@0..7
+          EXPR_FN@0..7
+            KW_FN@0..2 "fn"
+            PARAMS@2..5
+              LPAREN@2..3 "("
+              BINDER@3..4
+                IDENT@3..4 "x"
+              RPAREN@4..5 ")"
+            BLOCK@5..7
+              LBRACE@5..6 "{"
+              RBRACE@6..7 "}"
         "#);
     }
 }

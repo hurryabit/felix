@@ -68,7 +68,6 @@ impl First for NodeKind {
             STMT_EXPR => EXPR.first(),
             STMT_IF => enum_set!(KW_IF),
             STMT_LET => enum_set!(KW_LET),
-            EXPR_CLOSURE => PARAMS_CLOSURE.first(),
             EXPR_TERTIARY => LEVEL_INFIX.first(),
             EXPR_INFIX => LEVEL_PREFIX.first(),
             EXPR_PREFIX => OP_PREFIX.first(),
@@ -77,9 +76,9 @@ impl First for NodeKind {
             EXPR_VAR => enum_set!(IDENT),
             EXPR_LIT => LITERALS,
             EXPR_TUPLE => enum_set!(LPAREN),
+            EXPR_FN => enum_set!(KW_FN),
             EXPR_PAREN => enum_set!(LPAREN),
-            PARAMS_CLOSURE => enum_set!(BAR | BAR_BAR),
-            PARAMS_FN => enum_set!(LPAREN),
+            PARAMS => enum_set!(LPAREN),
             BINDER => enum_set!(KW_MUT | IDENT),
             ARGS => enum_set!(LPAREN),
             OP_INFIX => INFIX_OPS,
@@ -105,13 +104,13 @@ impl First for AliasKind {
         match self {
             DEFN => enum_set!(DEFN_FN).first(),
             BLOCK_INNER => (STMT_LET | STMT_IF).first() | EXPR.first(),
-            EXPR => EXPR_CLOSURE.first() | LEVEL_TERTIARY.first(),
+            EXPR => LEVEL_TERTIARY.first(),
             LEVEL_TERTIARY => LEVEL_INFIX.first(),
             LEVEL_INFIX => LEVEL_PREFIX.first(),
             LEVEL_PREFIX => EXPR_PREFIX.first() | LEVEL_POSTFIX.first(),
             LEVEL_POSTFIX => LEVEL_ATOM.first(),
             LEVEL_ATOM => {
-                enum_set!(EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_PAREN | BLOCK).first()
+                (EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN | BLOCK).first()
             }
         }
     }
@@ -211,14 +210,13 @@ mod tests {
             (Node(STMT_IF), Parser::stmt_if),
             (Node(STMT_LET), Parser::stmt_let),
             (Alias(EXPR), Parser::expr),
-            (Node(EXPR_CLOSURE), Parser::expr_closure),
             (Alias(LEVEL_TERTIARY), Parser::level_tertiary),
             (Alias(LEVEL_INFIX), Parser::level_infix),
             (Alias(LEVEL_PREFIX), Parser::level_prefix),
             (Alias(LEVEL_POSTFIX), Parser::level_postfix),
             (Alias(LEVEL_ATOM), Parser::level_atom),
-            (Node(PARAMS_FN), Parser::params_fn),
-            (Node(PARAMS_CLOSURE), Parser::params_closure),
+            (Node(EXPR_FN), Parser::expr_fn),
+            (Node(PARAMS), Parser::params),
             (Node(BINDER), Parser::binder),
             (Node(ARGS), Parser::args),
         ];
