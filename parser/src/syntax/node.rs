@@ -25,6 +25,7 @@ pub enum NodeKind {
     STMT_EXPR,
     STMT_IF,
     STMT_LET,
+    STMT_LET_REC,
 
     EXPR_TERTIARY,
     EXPR_INFIX,
@@ -38,6 +39,7 @@ pub enum NodeKind {
     EXPR_PAREN,
 
     PARAMS,
+    BINDING,
     BINDER,
     ARGS,
 

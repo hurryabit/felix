@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
         let parser = self;
         loop {
             match parser.peek() {
-                token if token.starts(STMT_LET) => parser.stmt_let(BLOCK_INNER.first() | follow)?,
+                KW_LET => parser.stmt_lets(BLOCK_INNER.first() | follow)?,
                 token if token.starts(STMT_IF) => parser.stmt_if(BLOCK_INNER.first() | follow)?,
                 token if token.starts(EXPR) => {
                     let checkpoint = parser.checkpoint();
@@ -92,20 +92,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn stmt_let(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
-        let mut parser = self.with_node(STMT_LET);
-        parser.expect_advance(KW_LET)?;
-        match parser.peek() {
-            KW_REC => {
-                parser.advance();
+    pub(crate) fn stmt_lets(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
+        let checkpoint = self.checkpoint();
+        self.expect_advance(KW_LET)?;
+        if self.expect(KW_REC | BINDER.first())? != KW_REC {
+            let mut parser = self.with_node_at(checkpoint, STMT_LET);
+            parser.binding(SEMI)?;
+            parser.expect_advance(SEMI)?;
+        } else {
+            let mut parser = self.with_node_at(checkpoint, STMT_LET_REC);
+            parser.advance();
+            loop {
+                parser.binding(KW_AND | SEMI)?;
+                if parser.expect_advance(KW_AND | SEMI)? == SEMI {
+                    break;
+                }
             }
-            token if token.starts(BINDER) => {}
-            token => return Err(parser.expecation_error(token, KW_REC | BINDER.first())),
         }
-        parser.binder(EQUALS)?;
-        parser.expect_advance(EQUALS)?;
-        parser.expr(SEMI)?;
-        parser.expect_advance(SEMI)?;
         Ok(())
     }
 
@@ -229,7 +232,9 @@ impl<'a> Parser<'a> {
                     parser.advance();
                     parser.expect_advance(LIT_NAT)?;
                 }
-                token if token.starts(ARGS) => self.with_node_at(checkpoint, EXPR_CALL).args(LPAREN | DOT | follow)?,
+                token if token.starts(ARGS) => self
+                    .with_node_at(checkpoint, EXPR_CALL)
+                    .args(LPAREN | DOT | follow)?,
                 _ => unreachable!(),
             }
         }
@@ -298,6 +303,13 @@ impl<'a> Parser<'a> {
                 return Ok(());
             }
         }
+    }
+
+    pub(crate) fn binding(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let mut parser = self.with_node(BINDING);
+        parser.binder(EQUALS)?;
+        parser.expect_advance(EQUALS)?;
+        parser.expr(follow)
     }
 
     pub(crate) fn binder(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {

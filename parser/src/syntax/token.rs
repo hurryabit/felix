@@ -16,6 +16,8 @@
 #[enumset(repr = "u64")]
 pub enum TokenKind {
     // Keywords
+    #[token("and")]
+    KW_AND,
     #[token("else")]
     KW_ELSE,
     #[token("false")]

@@ -182,126 +182,130 @@ fn webui_sample() {
           STMT_LET@254..268
             KW_LET@254..257 "let"
             WHITESPACE@257..258 " "
-            BINDER@258..263
-              KW_MUT@258..261 "mut"
-              WHITESPACE@261..262 " "
-              IDENT@262..263 "a"
-            WHITESPACE@263..264 " "
-            EQUALS@264..265 "="
-            WHITESPACE@265..266 " "
-            EXPR_LIT@266..267
-              LIT_NAT@266..267 "0"
+            BINDING@258..267
+              BINDER@258..263
+                KW_MUT@258..261 "mut"
+                WHITESPACE@261..262 " "
+                IDENT@262..263 "a"
+              WHITESPACE@263..264 " "
+              EQUALS@264..265 "="
+              WHITESPACE@265..266 " "
+              EXPR_LIT@266..267
+                LIT_NAT@266..267 "0"
             SEMI@267..268 ";"
           WHITESPACE@268..277 "\n        "
           STMT_LET@277..291
             KW_LET@277..280 "let"
             WHITESPACE@280..281 " "
-            BINDER@281..286
-              KW_MUT@281..284 "mut"
-              WHITESPACE@284..285 " "
-              IDENT@285..286 "b"
-            WHITESPACE@286..287 " "
-            EQUALS@287..288 "="
-            WHITESPACE@288..289 " "
-            EXPR_LIT@289..290
-              LIT_NAT@289..290 "1"
+            BINDING@281..290
+              BINDER@281..286
+                KW_MUT@281..284 "mut"
+                WHITESPACE@284..285 " "
+                IDENT@285..286 "b"
+              WHITESPACE@286..287 " "
+              EQUALS@287..288 "="
+              WHITESPACE@288..289 " "
+              EXPR_LIT@289..290
+                LIT_NAT@289..290 "1"
             SEMI@290..291 ";"
           WHITESPACE@291..300 "\n        "
-          STMT_LET@300..470
+          STMT_LET_REC@300..470
             KW_LET@300..303 "let"
             WHITESPACE@303..304 " "
             KW_REC@304..307 "rec"
             WHITESPACE@307..308 " "
-            BINDER@308..310
-              IDENT@308..310 "go"
-            WHITESPACE@310..311 " "
-            EQUALS@311..312 "="
-            WHITESPACE@312..313 " "
-            EXPR_FN@313..469
-              KW_FN@313..315 "fn"
-              PARAMS@315..318
-                LPAREN@315..316 "("
-                BINDER@316..317
-                  IDENT@316..317 "n"
-                RPAREN@317..318 ")"
-              WHITESPACE@318..319 " "
-              BLOCK@319..469
-                LBRACE@319..320 "{"
-                WHITESPACE@320..333 "\n            "
-                STMT_IF@333..459
-                  KW_IF@333..335 "if"
-                  WHITESPACE@335..336 " "
-                  EXPR_INFIX@336..341
-                    EXPR_VAR@336..337
-                      IDENT@336..337 "n"
-                    WHITESPACE@337..338 " "
-                    OP_INFIX@338..339
-                      RANGLE@338..339 ">"
-                    WHITESPACE@339..340 " "
-                    EXPR_LIT@340..341
-                      LIT_NAT@340..341 "0"
-                  WHITESPACE@341..342 " "
-                  BLOCK@342..459
-                    LBRACE@342..343 "{"
-                    WHITESPACE@343..360 "\n                "
-                    STMT_LET@360..370
-                      KW_LET@360..363 "let"
-                      WHITESPACE@363..364 " "
-                      BINDER@364..365
-                        IDENT@364..365 "c"
-                      WHITESPACE@365..366 " "
-                      EQUALS@366..367 "="
-                      WHITESPACE@367..368 " "
-                      EXPR_VAR@368..369
-                        IDENT@368..369 "b"
-                      SEMI@369..370 ";"
-                    WHITESPACE@370..387 "\n                "
-                    STMT_ASSIGN@387..397
-                      EXPR_VAR@387..388
-                        IDENT@387..388 "b"
-                      WHITESPACE@388..389 " "
-                      EQUALS@389..390 "="
-                      WHITESPACE@390..391 " "
-                      EXPR_INFIX@391..396
-                        EXPR_VAR@391..392
-                          IDENT@391..392 "a"
-                        WHITESPACE@392..393 " "
-                        OP_INFIX@393..394
-                          PLUS@393..394 "+"
-                        WHITESPACE@394..395 " "
-                        EXPR_VAR@395..396
-                          IDENT@395..396 "b"
-                      SEMI@396..397 ";"
-                    WHITESPACE@397..414 "\n                "
-                    STMT_ASSIGN@414..420
-                      EXPR_VAR@414..415
-                        IDENT@414..415 "a"
-                      WHITESPACE@415..416 " "
-                      EQUALS@416..417 "="
-                      WHITESPACE@417..418 " "
-                      EXPR_VAR@418..419
-                        IDENT@418..419 "c"
-                      SEMI@419..420 ";"
-                    WHITESPACE@420..437 "\n                "
-                    STMT_EXPR@437..445
-                      EXPR_CALL@437..444
-                        EXPR_VAR@437..439
-                          IDENT@437..439 "go"
-                        ARGS@439..444
-                          LPAREN@439..440 "("
-                          EXPR_INFIX@440..443
-                            EXPR_VAR@440..441
-                              IDENT@440..441 "n"
-                            OP_INFIX@441..442
-                              MINUS@441..442 "-"
-                            EXPR_LIT@442..443
-                              LIT_NAT@442..443 "1"
-                          RPAREN@443..444 ")"
-                      SEMI@444..445 ";"
-                    WHITESPACE@445..458 "\n            "
-                    RBRACE@458..459 "}"
-                WHITESPACE@459..468 "\n        "
-                RBRACE@468..469 "}"
+            BINDING@308..469
+              BINDER@308..310
+                IDENT@308..310 "go"
+              WHITESPACE@310..311 " "
+              EQUALS@311..312 "="
+              WHITESPACE@312..313 " "
+              EXPR_FN@313..469
+                KW_FN@313..315 "fn"
+                PARAMS@315..318
+                  LPAREN@315..316 "("
+                  BINDER@316..317
+                    IDENT@316..317 "n"
+                  RPAREN@317..318 ")"
+                WHITESPACE@318..319 " "
+                BLOCK@319..469
+                  LBRACE@319..320 "{"
+                  WHITESPACE@320..333 "\n            "
+                  STMT_IF@333..459
+                    KW_IF@333..335 "if"
+                    WHITESPACE@335..336 " "
+                    EXPR_INFIX@336..341
+                      EXPR_VAR@336..337
+                        IDENT@336..337 "n"
+                      WHITESPACE@337..338 " "
+                      OP_INFIX@338..339
+                        RANGLE@338..339 ">"
+                      WHITESPACE@339..340 " "
+                      EXPR_LIT@340..341
+                        LIT_NAT@340..341 "0"
+                    WHITESPACE@341..342 " "
+                    BLOCK@342..459
+                      LBRACE@342..343 "{"
+                      WHITESPACE@343..360 "\n                "
+                      STMT_LET@360..370
+                        KW_LET@360..363 "let"
+                        WHITESPACE@363..364 " "
+                        BINDING@364..369
+                          BINDER@364..365
+                            IDENT@364..365 "c"
+                          WHITESPACE@365..366 " "
+                          EQUALS@366..367 "="
+                          WHITESPACE@367..368 " "
+                          EXPR_VAR@368..369
+                            IDENT@368..369 "b"
+                        SEMI@369..370 ";"
+                      WHITESPACE@370..387 "\n                "
+                      STMT_ASSIGN@387..397
+                        EXPR_VAR@387..388
+                          IDENT@387..388 "b"
+                        WHITESPACE@388..389 " "
+                        EQUALS@389..390 "="
+                        WHITESPACE@390..391 " "
+                        EXPR_INFIX@391..396
+                          EXPR_VAR@391..392
+                            IDENT@391..392 "a"
+                          WHITESPACE@392..393 " "
+                          OP_INFIX@393..394
+                            PLUS@393..394 "+"
+                          WHITESPACE@394..395 " "
+                          EXPR_VAR@395..396
+                            IDENT@395..396 "b"
+                        SEMI@396..397 ";"
+                      WHITESPACE@397..414 "\n                "
+                      STMT_ASSIGN@414..420
+                        EXPR_VAR@414..415
+                          IDENT@414..415 "a"
+                        WHITESPACE@415..416 " "
+                        EQUALS@416..417 "="
+                        WHITESPACE@417..418 " "
+                        EXPR_VAR@418..419
+                          IDENT@418..419 "c"
+                        SEMI@419..420 ";"
+                      WHITESPACE@420..437 "\n                "
+                      STMT_EXPR@437..445
+                        EXPR_CALL@437..444
+                          EXPR_VAR@437..439
+                            IDENT@437..439 "go"
+                          ARGS@439..444
+                            LPAREN@439..440 "("
+                            EXPR_INFIX@440..443
+                              EXPR_VAR@440..441
+                                IDENT@440..441 "n"
+                              OP_INFIX@441..442
+                                MINUS@441..442 "-"
+                              EXPR_LIT@442..443
+                                LIT_NAT@442..443 "1"
+                            RPAREN@443..444 ")"
+                        SEMI@444..445 ";"
+                      WHITESPACE@445..458 "\n            "
+                      RBRACE@458..459 "}"
+                  WHITESPACE@459..468 "\n        "
+                  RBRACE@468..469 "}"
             SEMI@469..470 ";"
           WHITESPACE@470..479 "\n        "
           STMT_EXPR@479..485
