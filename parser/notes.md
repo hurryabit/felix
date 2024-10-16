@@ -90,6 +90,7 @@ BANG = "!"
 BANG_EQUALS = "!="
 BAR = "|"
 BAR_BAR = "||"
+COLON = ":"
 COMMA = ","
 DOT = "."
 EQUALS = "="
@@ -97,6 +98,7 @@ EQUALS_EQUALS = "=="
 LANGLE_EQUALS = "<="
 MINUS = "-"
 MINUS_RANGLE = "->"
+QUERY = "?"
 RANGLE_EQUALS = ">="
 PERCENT = "%"
 PLUS = "+"
@@ -118,14 +120,14 @@ their associativity. (The examples in the rows between two operations involve op
     </thead>
     <tbody>
         <tr>
-            <td>Closure <code>|A| B</code></td>
+            <td>Tertiary <code>A ? B  : C</code></td>
             <td>right</td>
-            <td><code>|x| |y| A</code> means <code>|x| (|y| A)</code></td>
+            <td><code>A ? B : C ? D : E</code> means <code>A ? B : (C ? D : E)</code></td>
         </tr>
         <tr>
             <td></td>
             <td></td>
-            <td><code>|x| A || B</code> means <code>|x| (A || B)</code></td>
+            <td><code>A || B ? C || D ? E || F</code> means <code>(A || B) ? (C || D) : (E || F)</code></td>
         </tr>
         <tr>
             <td>Disjunction <code>||</code></td>
@@ -138,7 +140,7 @@ their associativity. (The examples in the rows between two operations involve op
             <td><code>A && B || C</code> means <code>(A && B) || C</code></td>
         </tr>
         <tr>
-            <td>Conjunction <code>||</code></td>
+            <td>Conjunction <code>&&</code></td>
             <td>right</td>
             <td><code>A && B && C</code> means <code>A && (B && C)</code></td>
         </tr>
