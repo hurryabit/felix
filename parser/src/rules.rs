@@ -1,7 +1,7 @@
 // This module implements a parser for the grammar provided in notes.md.
-use crate::first::{AliasKind, First};
+use crate::first::First;
 use crate::parser::{Parser, Result};
-use crate::syntax::{NodeKind, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS};
+use crate::syntax::{AliasKind, NodeKind, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS};
 
 use AliasKind::*;
 use NodeKind::*;

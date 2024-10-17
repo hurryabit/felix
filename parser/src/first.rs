@@ -1,40 +1,11 @@
 use super::syntax::{
-    NodeKind, NodeKindSet, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS, TRIVIA,
+    AliasKind, AliasKindSet, NodeKind, NodeKindSet, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS, TRIVIA,
 };
 use enumset::enum_set;
 
 use AliasKind::*;
 use NodeKind::*;
 use TokenKind::*;
-
-#[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Debug,
-    Hash,
-    PartialOrd,
-    Ord,
-    enumset::EnumSetType,
-    logos::Logos,
-    strum::Display,
-    strum::EnumCount,
-    strum::EnumIter,
-    strum::FromRepr,
-)]
-#[repr(u16)]
-#[enumset(repr = "u64")]
-pub(crate) enum AliasKind {
-    DEFN,
-    BLOCK_INNER,
-    EXPR,
-    LEVEL_TERTIARY,
-    LEVEL_INFIX,
-    LEVEL_PREFIX,
-    LEVEL_POSTFIX,
-    LEVEL_ATOM,
-}
-
-pub(crate) type AliasKindSet = enumset::EnumSet<AliasKind>;
 
 pub(crate) trait First {
     fn first(self) -> TokenKindSet;
@@ -109,9 +80,7 @@ impl First for AliasKind {
             LEVEL_INFIX => LEVEL_PREFIX.first(),
             LEVEL_PREFIX => EXPR_PREFIX.first() | LEVEL_POSTFIX.first(),
             LEVEL_POSTFIX => LEVEL_ATOM.first(),
-            LEVEL_ATOM => {
-                (EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN).first()
-            }
+            LEVEL_ATOM => (EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN).first(),
         }
     }
 }
@@ -157,7 +126,10 @@ mod tests {
     }
 
     fn compute_first<'a>(rule: fn(&mut Parser<'a>, TokenKindSet) -> Result<()>) -> TokenKindSet {
-        fn can_start<'a>(token: TokenKind, rule: fn(&mut Parser<'a>, TokenKindSet) -> Result<()>) -> bool {
+        fn can_start<'a>(
+            token: TokenKind,
+            rule: fn(&mut Parser<'a>, TokenKindSet) -> Result<()>,
+        ) -> bool {
             if token.is(TRIVIA) {
                 return false;
             }
@@ -202,7 +174,10 @@ mod tests {
 
     #[test]
     fn node_first_matches() {
-        let cases: Vec<(NodeOrAliasKind, fn(&mut Parser<'static>, TokenKindSet) -> Result<()>)> = vec![
+        let cases: Vec<(
+            NodeOrAliasKind,
+            fn(&mut Parser<'static>, TokenKindSet) -> Result<()>,
+        )> = vec![
             (Alias(DEFN), Parser::defn),
             (Node(DEFN_FN), Parser::defn_fn),
             (Node(BLOCK), Parser::block),

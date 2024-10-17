@@ -53,6 +53,35 @@ pub type NodeKindSet = enumset::EnumSet<NodeKind>;
 
 pub type Node = rowan::SyntaxNode<super::lang::FelixLang>;
 
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(
+    Debug,
+    Hash,
+    PartialOrd,
+    Ord,
+    enumset::EnumSetType,
+    logos::Logos,
+    strum::Display,
+    strum::EnumCount,
+    strum::EnumIter,
+    strum::FromRepr,
+)]
+#[repr(u16)]
+#[enumset(repr = "u64")]
+pub(crate) enum AliasKind {
+    DEFN,
+    BLOCK_INNER,
+    EXPR,
+    LEVEL_TERTIARY,
+    LEVEL_INFIX,
+    LEVEL_PREFIX,
+    LEVEL_POSTFIX,
+    LEVEL_ATOM,
+}
+
+pub(crate) type AliasKindSet = enumset::EnumSet<AliasKind>;
+
 impl TryFrom<rowan::NodeKind> for NodeKind {
     type Error = ();
 
