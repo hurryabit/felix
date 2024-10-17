@@ -1,7 +1,9 @@
 // This module implements a parser for the grammar provided in notes.md.
 use crate::first::First;
 use crate::parser::{Parser, Result};
-use crate::syntax::{AliasKind, NodeKind, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS};
+use crate::syntax::{
+    AliasKind, NodeKind, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS,
+};
 
 use AliasKind::*;
 use NodeKind::*;
@@ -21,9 +23,135 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn defn(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
         match self.peek() {
+            token if token.starts(DEFN_TYPE) => self.defn_type(follow),
             token if token.starts(DEFN_FN) => self.defn_fn(follow),
             token => Err(self.expecation_error(token, DEFN.first())),
         }
+    }
+
+    pub(crate) fn defn_type(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
+        let mut parser = self.with_node(DEFN_TYPE);
+        parser.expect_advance(KW_TYPE)?;
+        parser.expect_advance(IDENT)?;
+        parser.expect_advance(EQUALS)?;
+        parser.type_(SEMI)?;
+        parser.expect_advance(SEMI)?;
+        Ok(())
+    }
+
+    pub(crate) fn type_(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        self.level_type_fn(follow)
+    }
+
+    pub(crate) fn level_type_fn(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        if self.expect(LEVEL_UNION.first() | KW_FN)? == KW_FN {
+            // TODO(MH): Turn this indirect tail recursion into a loop.
+            self.type_fn(follow)
+        } else {
+            self.level_union(follow)
+        }
+    }
+
+    pub(crate) fn type_fn(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let mut parser = self.with_node(TYPE_FN);
+        parser.expect_advance(KW_FN)?;
+        parser.expect_advance(LPAREN)?;
+        parser.list_types(RPAREN)?;
+        parser.expect_advance(RPAREN)?;
+        parser.expect_advance(MINUS_RANGLE)?;
+        parser.level_type_fn(follow)
+    }
+
+    pub(crate) fn level_union(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let follow = follow.into();
+        let checkpoint = self.checkpoint();
+        self.level_intersection(follow | BAR)?;
+        if self.expect(follow | BAR)? != BAR {
+            return Ok(());
+        }
+        let mut parser = self.with_node_at(checkpoint, TYPE_UNION);
+        parser.advance();
+        // TODO(MH): Turn tail recursion into loop.
+        parser.level_union(follow)
+    }
+
+    pub(crate) fn level_intersection(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let follow = follow.into();
+        let checkpoint = self.checkpoint();
+        self.level_complement(follow | BAR)?;
+        if self.expect(follow | AMPER)? != AMPER {
+            return Ok(());
+        }
+        let mut parser = self.with_node_at(checkpoint, TYPE_INTERSECTION);
+        parser.advance();
+        // TODO(MH): Turn tail recursion into loop.
+        parser.level_intersection(follow)
+    }
+
+    pub(crate) fn level_complement(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        if self.expect(LEVEL_BASIC.first() | TILDE)? == TILDE {
+            let mut parser = self.with_node(TYPE_COMPLEMENT);
+            parser.advance();
+            // TODO(MH): Turn tail recursion into loop.
+            parser.level_complement(follow)
+        } else {
+            self.level_basic(follow)
+        }
+    }
+
+    pub(crate) fn level_basic(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        match self.peek() {
+            LPAREN => self.type_paren_or_tuple(follow),
+            token if token.starts(TYPE_BUILTIN) => {
+                self.with_node(TYPE_BUILTIN).advance();
+                Ok(())
+            }
+            token if token.starts(TYPE_REF) => {
+                self.with_node(TYPE_REF).advance();
+                Ok(())
+            }
+            token => return Err(self.expecation_error(token, LEVEL_BASIC.first())),
+        }
+    }
+
+    pub(crate) fn type_paren_or_tuple(&mut self, _follow: impl Into<TokenKindSet>) -> Result<()> {
+        let checkpoint = self.checkpoint();
+        self.expect_advance(LPAREN)?;
+        if self.expect(RPAREN | TYPE.first())? == RPAREN {
+            self.with_node_at(checkpoint, TYPE_TUPLE).advance();
+            return Ok(());
+        }
+        self.type_(RPAREN | COMMA)?;
+        if self.expect(RPAREN | COMMA)? == RPAREN {
+            self.with_node_at(checkpoint, TYPE_PAREN).advance();
+            return Ok(());
+        }
+        let mut parser = self.with_node_at(checkpoint, TYPE_TUPLE);
+        parser.expect_advance(COMMA)?;
+        if parser.expect(RPAREN | TYPE.first())? == RPAREN {
+            parser.advance();
+            return Ok(());
+        }
+        loop {
+            parser.type_(COMMA | RPAREN)?;
+            if parser.expect_advance(COMMA | RPAREN)? == RPAREN {
+                return Ok(());
+            }
+        }
+    }
+
+    pub(crate) fn list_types(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
+        let follow = follow.into();
+        let mut parser = self.with_node(LIST_TYPES);
+        if !parser.expect(TYPE.first() | follow)?.starts(TYPE) {
+            return Ok(());
+        }
+        parser.type_(COMMA | follow)?;
+        while parser.expect(COMMA | follow)? == COMMA {
+            parser.advance();
+            parser.type_(COMMA | follow)?;
+        }
+        Ok(())
     }
 
     pub(crate) fn defn_fn(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {

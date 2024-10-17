@@ -1,5 +1,6 @@
-use super::syntax::{
-    AliasKind, AliasKindSet, NodeKind, NodeKindSet, TokenKind, TokenKindSet, INFIX_OPS, LITERALS, PREFIX_OPS, TRIVIA,
+use crate::syntax::{
+    AliasKind, AliasKindSet, NodeKind, NodeKindSet, TokenKind, TokenKindSet, BUILTIN_TYPES,
+    INFIX_OPS, LITERALS, PREFIX_OPS, TRIVIA,
 };
 use enumset::enum_set;
 
@@ -33,7 +34,17 @@ impl First for NodeKind {
     fn first(self) -> TokenKindSet {
         match self {
             PROGRAM => DEFN.first(),
+            DEFN_TYPE => enum_set!(KW_TYPE),
             DEFN_FN => enum_set!(KW_FN),
+            TYPE_UNION => LEVEL_INTERSECTION.first(),
+            TYPE_INTERSECTION => LEVEL_COMPLEMENT.first(),
+            TYPE_COMPLEMENT => enum_set!(TILDE),
+            TYPE_BUILTIN => BUILTIN_TYPES,
+            TYPE_REF => enum_set!(IDENT),
+            TYPE_TUPLE => enum_set!(LPAREN),
+            TYPE_FN => enum_set!(KW_FN),
+            TYPE_PAREN => enum_set!(LPAREN),
+            LIST_TYPES => TYPE.first(),
             BLOCK => enum_set!(LBRACE),
             STMT_ASSIGN => EXPR.first(),
             STMT_EXPR => EXPR.first(),
@@ -73,7 +84,13 @@ impl First for AliasKind {
     fn first(self) -> TokenKindSet {
         // self.expand().first()
         match self {
-            DEFN => enum_set!(DEFN_FN).first(),
+            DEFN => (DEFN_TYPE | DEFN_FN).first(),
+            TYPE => LEVEL_TYPE_FN.first(),
+            LEVEL_TYPE_FN => TYPE_FN.first() | LEVEL_UNION.first(),
+            LEVEL_UNION => LEVEL_INTERSECTION.first(),
+            LEVEL_INTERSECTION => LEVEL_COMPLEMENT.first(),
+            LEVEL_COMPLEMENT => TYPE_COMPLEMENT.first() | LEVEL_BASIC.first(),
+            LEVEL_BASIC => (TYPE_BUILTIN | TYPE_REF | TYPE_TUPLE | TYPE_PAREN).first(),
             BLOCK_INNER => (STMT_LET | STMT_IF).first() | EXPR.first(),
             EXPR => LEVEL_TERTIARY.first(),
             LEVEL_TERTIARY => LEVEL_INFIX.first(),
@@ -179,6 +196,13 @@ mod tests {
             fn(&mut Parser<'static>, TokenKindSet) -> Result<()>,
         )> = vec![
             (Alias(DEFN), Parser::defn),
+            (Node(DEFN_TYPE), Parser::defn_type),
+            (Alias(TYPE), Parser::type_),
+            (Alias(LEVEL_UNION), Parser::level_union),
+            (Alias(LEVEL_INTERSECTION), Parser::level_intersection),
+            (Alias(LEVEL_COMPLEMENT), Parser::level_complement),
+            (Alias(LEVEL_BASIC), Parser::level_basic),
+            (Node(TYPE_FN), Parser::type_fn),
             (Node(DEFN_FN), Parser::defn_fn),
             (Node(BLOCK), Parser::block),
             (Alias(BLOCK_INNER), Parser::block_inner),

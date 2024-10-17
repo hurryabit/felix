@@ -34,6 +34,18 @@ pub enum TokenKind {
     KW_REC,
     #[token("true")]
     KW_TRUE,
+    #[token("type")]
+    KW_TYPE,
+
+    // Builtin types
+    #[token("Any")]
+    KW_ANY,
+    #[token("Bool")]
+    KW_BOOL,
+    #[token("Int")]
+    KW_INT,
+    #[token("Never")]
+    KW_NEVER,
 
     // Delimiters
     #[token("<")]
@@ -54,6 +66,8 @@ pub enum TokenKind {
     LPAREN,
 
     // Operator/separator
+    #[token("&")]
+    AMPER,
     #[token("&&")]
     AMPER_AMPER,
     #[token("!")]
@@ -94,6 +108,8 @@ pub enum TokenKind {
     SLASH,
     #[token("*")]
     STAR,
+    #[token("~")]
+    TILDE,
 
     // Regular expressions
     #[regex(r"[A-Za-z_][A-Za-z0-9_]*")]
@@ -114,6 +130,8 @@ use TokenKind::*;
 pub type TokenKindSet = enumset::EnumSet<TokenKind>;
 
 pub type Token = rowan::SyntaxToken<super::lang::FelixLang>;
+
+pub const BUILTIN_TYPES: TokenKindSet = enumset::enum_set!(KW_BOOL | KW_INT | KW_NEVER | KW_ANY);
 
 pub const INFIX_OPS: TokenKindSet = enumset::enum_set!(
     PLUS | MINUS

@@ -36,6 +36,27 @@ fn parse_expr_success(input: &str) -> syntax::Node {
     result.syntax
 }
 
+fn parse_type(input: &str) -> ParseResult {
+    fn type_(parser: &mut Parser) {
+        let mut parser = parser.with_root(syntax::NodeKind::PROGRAM);
+        if let Err(problem) = parser.type_(syntax::TokenKind::EOF) {
+            parser.push_problem(problem);
+        }
+        parser.skip_until(syntax::TokenKind::EOF);
+    }
+
+    let input = input.replace(" ", "");
+    let mapper = Mapper::new(&input);
+    let parser = Parser::new(&input, &mapper);
+    parser.run(type_)
+}
+
+fn parse_type_success(input: &str) -> syntax::Node {
+    let result = parse_type(input);
+    assert!(result.problems.is_empty());
+    result.syntax
+}
+
 fn dump_problems(problems: &Vec<Problem>) -> String {
     let mut buffer = String::new();
     for problem in problems {
@@ -415,8 +436,8 @@ fn one_good_fn_between_errors() {
       WHITESPACE@14..15 " "
     "#);
     assert_snapshot!(dump_problems(&result.problems), @r#"
-    ERROR 1:2-1:3: Found UNKNOWN, expected KW_FN. [parser/program]
-    ERROR 1:14-1:15: Found UNKNOWN, expected KW_FN. [parser/program]
+    ERROR 1:2-1:3: Found UNKNOWN, expected KW_FN | KW_TYPE. [parser/program]
+    ERROR 1:14-1:15: Found UNKNOWN, expected KW_FN | KW_TYPE. [parser/program]
     "#);
 }
 
@@ -573,6 +594,277 @@ fn assign() {
           RBRACE@16..17 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @"");
+}
+
+mod type_ {
+    use super::*;
+
+    #[test]
+    fn fn_fn() {
+        let syntax = parse_type_success("fn(A) -> fn(B) -> C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..15
+          TYPE_FN@0..15
+            KW_FN@0..2 "fn"
+            LPAREN@2..3 "("
+            LIST_TYPES@3..4
+              TYPE_REF@3..4
+                IDENT@3..4 "A"
+            RPAREN@4..5 ")"
+            MINUS_RANGLE@5..7 "->"
+            TYPE_FN@7..15
+              KW_FN@7..9 "fn"
+              LPAREN@9..10 "("
+              LIST_TYPES@10..11
+                TYPE_REF@10..11
+                  IDENT@10..11 "B"
+              RPAREN@11..12 ")"
+              MINUS_RANGLE@12..14 "->"
+              TYPE_REF@14..15
+                IDENT@14..15 "C"
+        "#);
+    }
+
+    #[test]
+    fn fn_union() {
+        let syntax = parse_type_success("fn(A) -> B | C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..10
+          TYPE_FN@0..10
+            KW_FN@0..2 "fn"
+            LPAREN@2..3 "("
+            LIST_TYPES@3..4
+              TYPE_REF@3..4
+                IDENT@3..4 "A"
+            RPAREN@4..5 ")"
+            MINUS_RANGLE@5..7 "->"
+            TYPE_UNION@7..10
+              TYPE_REF@7..8
+                IDENT@7..8 "B"
+              BAR@8..9 "|"
+              TYPE_REF@9..10
+                IDENT@9..10 "C"
+        "#);
+    }
+
+    #[test]
+    fn union_fn_bad() {
+        let result = parse_type("A | fn(B) -> C");
+        assert_debug_snapshot!(result.syntax, @r#"
+        PROGRAM@0..10
+          TYPE_UNION@0..2
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            BAR@1..2 "|"
+          ERROR@2..10
+            KW_FN@2..4 "fn"
+            LPAREN@4..5 "("
+            IDENT@5..6 "B"
+            RPAREN@6..7 ")"
+            MINUS_RANGLE@7..9 "->"
+            IDENT@9..10 "C"
+        "#);
+        assert_snapshot!(dump_problems(&result.problems), @r#"
+        ERROR 1:3-1:5: Found KW_FN, expected KW_ANY | KW_BOOL | KW_INT | KW_NEVER | LPAREN | TILDE | IDENT. [parser/type_union]
+        "#)
+    }
+
+    #[test]
+    fn union_fn() {
+        let syntax = parse_type_success("A | (fn(B) -> C)");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..12
+          TYPE_UNION@0..12
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            BAR@1..2 "|"
+            TYPE_PAREN@2..12
+              LPAREN@2..3 "("
+              TYPE_FN@3..11
+                KW_FN@3..5 "fn"
+                LPAREN@5..6 "("
+                LIST_TYPES@6..7
+                  TYPE_REF@6..7
+                    IDENT@6..7 "B"
+                RPAREN@7..8 ")"
+                MINUS_RANGLE@8..10 "->"
+                TYPE_REF@10..11
+                  IDENT@10..11 "C"
+              RPAREN@11..12 ")"
+        "#);
+    }
+
+    #[test]
+    fn union_union() {
+        let syntax = parse_type_success("A | B | C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          TYPE_UNION@0..5
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            BAR@1..2 "|"
+            TYPE_UNION@2..5
+              TYPE_REF@2..3
+                IDENT@2..3 "B"
+              BAR@3..4 "|"
+              TYPE_REF@4..5
+                IDENT@4..5 "C"
+        "#);
+    }
+
+    #[test]
+    fn union_intersection() {
+        let syntax = parse_type_success("A | B & C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          TYPE_UNION@0..5
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            BAR@1..2 "|"
+            TYPE_INTERSECTION@2..5
+              TYPE_REF@2..3
+                IDENT@2..3 "B"
+              AMPER@3..4 "&"
+              TYPE_REF@4..5
+                IDENT@4..5 "C"
+        "#);
+    }
+
+    #[test]
+    fn intersection_union() {
+        let syntax = parse_type_success("A & B | C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          TYPE_UNION@0..5
+            TYPE_INTERSECTION@0..3
+              TYPE_REF@0..1
+                IDENT@0..1 "A"
+              AMPER@1..2 "&"
+              TYPE_REF@2..3
+                IDENT@2..3 "B"
+            BAR@3..4 "|"
+            TYPE_REF@4..5
+              IDENT@4..5 "C"
+        "#);
+    }
+
+    #[test]
+    fn intersection_intersection() {
+        let syntax = parse_type_success("A & B & C");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          TYPE_INTERSECTION@0..5
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            AMPER@1..2 "&"
+            TYPE_INTERSECTION@2..5
+              TYPE_REF@2..3
+                IDENT@2..3 "B"
+              AMPER@3..4 "&"
+              TYPE_REF@4..5
+                IDENT@4..5 "C"
+        "#);
+    }
+
+    #[test]
+    fn intersection_complement() {
+        let syntax = parse_type_success("A & ~B");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..4
+          TYPE_INTERSECTION@0..4
+            TYPE_REF@0..1
+              IDENT@0..1 "A"
+            AMPER@1..2 "&"
+            TYPE_COMPLEMENT@2..4
+              TILDE@2..3 "~"
+              TYPE_REF@3..4
+                IDENT@3..4 "B"
+        "#);
+    }
+
+    #[test]
+    fn complement_intersection() {
+        let syntax = parse_type_success("~A & B");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..4
+          TYPE_INTERSECTION@0..4
+            TYPE_COMPLEMENT@0..2
+              TILDE@0..1 "~"
+              TYPE_REF@1..2
+                IDENT@1..2 "A"
+            AMPER@2..3 "&"
+            TYPE_REF@3..4
+              IDENT@3..4 "B"
+        "#);
+    }
+
+    #[test]
+    fn complement_comlement() {
+        let syntax = parse_type_success("~~A");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..3
+          TYPE_COMPLEMENT@0..3
+            TILDE@0..1 "~"
+            TYPE_COMPLEMENT@1..3
+              TILDE@1..2 "~"
+              TYPE_REF@2..3
+                IDENT@2..3 "A"
+        "#);
+    }
+
+    #[test]
+    fn tuple_zero() {
+        let syntax = parse_type_success("()");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..2
+          TYPE_TUPLE@0..2
+            LPAREN@0..1 "("
+            RPAREN@1..2 ")"
+        "#);
+    }
+
+    #[test]
+    fn tuple_one() {
+        let syntax = parse_type_success("(A,)");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..4
+          TYPE_TUPLE@0..4
+            LPAREN@0..1 "("
+            TYPE_REF@1..2
+              IDENT@1..2 "A"
+            COMMA@2..3 ","
+            RPAREN@3..4 ")"
+        "#);
+    }
+
+    #[test]
+    fn tuple_two() {
+        let syntax = parse_type_success("(A, B)");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..5
+          TYPE_TUPLE@0..5
+            LPAREN@0..1 "("
+            TYPE_REF@1..2
+              IDENT@1..2 "A"
+            COMMA@2..3 ","
+            TYPE_REF@3..4
+              IDENT@3..4 "B"
+            RPAREN@4..5 ")"
+        "#);
+    }
+
+    #[test]
+    fn paren() {
+        let syntax = parse_type_success("(A)");
+        assert_debug_snapshot!(syntax, @r#"
+        PROGRAM@0..3
+          TYPE_PAREN@0..3
+            LPAREN@0..1 "("
+            TYPE_REF@1..2
+              IDENT@1..2 "A"
+            RPAREN@2..3 ")"
+        "#);
+    }
 }
 
 mod defn_fn {

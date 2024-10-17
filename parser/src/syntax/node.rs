@@ -17,7 +17,19 @@
 pub enum NodeKind {
     PROGRAM,
 
+    DEFN_TYPE,
     DEFN_FN,
+
+    TYPE_UNION,
+    TYPE_INTERSECTION,
+    TYPE_COMPLEMENT,
+    TYPE_BUILTIN,
+    TYPE_REF,
+    TYPE_TUPLE,
+    TYPE_FN,
+    TYPE_PAREN,
+
+    LIST_TYPES,
 
     BLOCK,
 
@@ -71,6 +83,12 @@ pub type Node = rowan::SyntaxNode<super::lang::FelixLang>;
 #[enumset(repr = "u64")]
 pub(crate) enum AliasKind {
     DEFN,
+    TYPE,
+    LEVEL_TYPE_FN,
+    LEVEL_UNION,
+    LEVEL_INTERSECTION,
+    LEVEL_COMPLEMENT,
+    LEVEL_BASIC,
     BLOCK_INNER,
     EXPR,
     LEVEL_TERTIARY,
