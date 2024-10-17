@@ -17,8 +17,27 @@ in the resulting CST.
 
 ```fsharp
 PROGRAM = {DEFN}
-@DEFN = DEFN_FN
-DEFN_FN = "fn" IDENT PARAMS_FN BLOCK
+@DEFN = DEFN_TYPE | DEFN_FN
+
+DEFN_TYPE = "type" IDENT "=" @TYPE ";"
+DEFN_FN = "fn" IDENT SIGNATURE BLOCK
+
+@TYPE = @LEVEL_UNION
+@LEVEL_UNION = @LEVEL_INTERSECTION | TYPE_UNION
+TYPE_UNION = @LEVEL_INTERSECTION "|" @LEVEL_UNION
+@LEVEL_INTERSECTION = @LEVEL_NEGATION | TYPE_INTERSECTION
+TYPE_INTERSECTION = @LEVEL_NEGATION "&" @LEVEL_INTERSECTION
+@LEVEL_NEGATION = @LEVEL_BASIC | TYPE_NEGATION
+TYPE_NEGATION = "~" @LEVEL_NEGATION
+@LEVEL_BASIC = TYPE_BUILTIN | TYPE_REF | TYPE_TUPLE | TYPE_FN | TYPE_PAREN
+TYPE_BUILTIN = "Bool" | "Int" | "Never" | "Any"
+TYPE_REF = IDENT
+(* A 1-tuple must have a trailing comma. *)
+TYPE_TUPLE = "(" [@TYPE "," [@TYPE {"," @TYPE}]] ")"
+TYPE_FN = "fn" "(" LIST_TYPES ")" "->" @TYPE
+TYPE_PAREN = "(" @TYPE ")"
+
+LIST_TYPES = [@TYPE {"," @TYPE}]
 
 BLOCK = "{" @BLOCK_INNER "}"
 @BLOCK_INNER = {@STMT} [@EXPR]
@@ -29,7 +48,6 @@ STMT_EXPR = @EXPR ";"
 STMT_IF = "if" @EXPR BLOCK ["else" (BLOCK | STMT_IF)]
 STMT_LET = "let" BINDING ";"
 STMT_LET_REC = "let" "rec" BINDING {"and" BINDING} ";"
-BINDING = BINDER "=" @EXPR
 
 @EXPR = @LEVEL_TERTIARY
 @LEVEL_TERTIARY = @LEVEL_INFIX | EXPR_TERTIARY
@@ -47,11 +65,12 @@ EXPR_LIT = LIT_NAT | @LIT_BOOL
 EXPR_VAR = IDENT
 (* A 1-tuple must have a trailing comma! *)
 EXPR_TUPLE = "(" [@EXPR "," [@EXPR {"," @EXPR}]] ")"
-EXPR_FN = "fn" PARAMS BLOCK
+EXPR_FN = "fn" SIGNATURE BLOCK
 EXPR_PAREN = "(" @EXPR ")"
 
-PARAMS = "(" [BINDER {"," BINDER}] ")"
-BINDER = ["mut"] IDENT
+SIGNATURE = "(" [BINDER {"," BINDER}] ")" ["->" @TYPE]
+BINDER = ["mut"] IDENT [":" @TYPE]
+BINDING = BINDER "=" @EXPR
 
 ARGS = "(" [@EXPR {"," @EXPR}] ")"
 
@@ -67,6 +86,7 @@ LIT_NAT = r"0|[1-9][0-9]*"
 (* The following rules are only here to record token names: *)
 
 (* Keywords: *)
+KW_AND = "and"
 KW_ELSE = "else"
 KW_FALSE = "false"
 KW_FN = "fn"
@@ -75,6 +95,13 @@ KW_LET = "let"
 KW_MUT = "mut"
 KW_REC = "rec"
 KW_TRUE = "true"
+KW_TYPE = "type"
+
+(* Builtin types *)
+KW_ANY = "Any" (* The top type. *)
+KW_BOOL = "Bool"
+KW_INT = "Int"
+KW_NEVER = "Never" (* The bottom type. *)
 
 (* Delimiters *)
 LANGLE = "<"
@@ -87,6 +114,7 @@ RPAREN = ")"
 LPAREN = "("
 
 (* Operators & separators *)
+AMPER = "&"
 AMPER_AMPER = "&&"
 BANG = "!"
 BANG_EQUALS = "!="
@@ -107,6 +135,7 @@ PLUS = "+"
 SEMI = ";"
 SLASH = "/"
 STAR = "*"
+TILDE = "~"
 ```
 
 ### Operator precedence and associativity
