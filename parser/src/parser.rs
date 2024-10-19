@@ -51,7 +51,6 @@ impl<'a> Parser<'a> {
 
     #[cfg(test)]
     pub(crate) fn fake_from_tokens(tokens: impl IntoIterator<Item = TokenKind> + 'a) -> Self {
-
         Self {
             input: FAKE_INPUT,
             mapper: &FAKE_MAPPER,
@@ -133,15 +132,11 @@ impl<'a> Parser<'a> {
         self.peek_with_span().0
     }
 
-    pub(crate) fn expecation_error(
-        &mut self,
-        token: TokenKind,
-        expected: impl Into<TokenKindSet>,
-    ) -> Problem {
-        self.error(format!("Found {}, expected {}.", token, expected.into()))
+    pub(crate) fn expecation_error(&mut self, token: TokenKind, expected: TokenKindSet) -> Problem {
+        self.error(format!("Found {}, expected {}.", token, expected))
     }
 
-    pub(crate) fn expect(&mut self, expected: impl Into<TokenKindSet>) -> Result<TokenKind> {
+    pub(crate) fn expect(&mut self, expected: TokenKindSet) -> Result<TokenKind> {
         let expected = expected.into();
         let token = self.peek();
         if token.is(expected) {
@@ -166,7 +161,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: impl Into<TokenKindSet>,
     ) -> Result<TokenKind> {
-        let token = self.expect(expected)?;
+        let token = self.expect(expected.into())?;
         Ok(self.advance(token))
     }
 
