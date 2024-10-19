@@ -501,7 +501,7 @@ fn missing_infix() {
         RBRACE@14..15 "}"
     "#);
     assert_snapshot!(dump_problems(&result.problems), @r#"
-    ERROR 1:13-1:14: Found IDENT, expected RBRACE | EQUALS | QUERY | SEMI. [parser/block]
+    ERROR 1:13-1:14: Found IDENT, expected LANGLE | RANGLE | RBRACE | AMPER_AMPER | BANG_EQUALS | BAR_BAR | EQUALS | EQUALS_EQUALS | LANGLE_EQUALS | PERCENT | PLUS | MINUS | QUERY | RANGLE_EQUALS | SEMI | SLASH | STAR. [parser/block]
     "#);
 }
 
@@ -1216,7 +1216,7 @@ mod level_infix {
               IDENT@6..7 "C"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:5-1:7: Cannot chain comparison operators EQUALS_EQUALS and BANG_EQUALS [parser/program]
+        ERROR 1:5-1:7: Cannot chain operators EQUALS_EQUALS and BANG_EQUALS [parser/program]
         "#);
     }
 
@@ -1396,8 +1396,8 @@ mod level_infix {
               IDENT@7..8 "D"
         "#);
         assert_snapshot!(dump_problems(&result.problems), @r#"
-        ERROR 1:4-1:6: Cannot chain comparison operators LANGLE and EQUALS_EQUALS [parser/program]
-        ERROR 1:7-1:8: Cannot chain comparison operators EQUALS_EQUALS and RANGLE [parser/program]
+        ERROR 1:4-1:6: Cannot chain operators LANGLE and EQUALS_EQUALS [parser/program]
+        ERROR 1:7-1:8: Cannot chain operators EQUALS_EQUALS and RANGLE [parser/program]
         "#);
     }
 

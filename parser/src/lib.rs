@@ -1,5 +1,6 @@
 mod first;
 mod parser;
+mod combinators;
 pub mod rules;
 pub mod syntax;
 

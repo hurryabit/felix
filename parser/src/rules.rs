@@ -276,58 +276,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        #[derive(Clone, Copy)]
-        struct StackEntry {
-            checkpoint: rowan::Checkpoint,
-            op: TokenKind,
-            right_power: u32,
-        }
-
-        let follow = follow.into();
-        let mut stack: Vec<StackEntry> = Vec::new();
-        let mut checkpoint = self.checkpoint();
-        self.level_prefix(INFIX_OPS | LEVEL_PREFIX.first())?;
-
-        let res = loop {
-            let op = self.peek();
-            if !op.is(INFIX_OPS) {
-                break Ok(());
-            }
-            let (left_power, right_power) = binding_power(op);
-            let op_node = loop {
-                if let Some(top) = stack.last().copied() {
-                    if top.right_power >= left_power {
-                        checkpoint = top.checkpoint;
-                        self.with_node_at(top.checkpoint, EXPR_INFIX);
-                        stack.pop();
-                        if top.right_power > left_power {
-                            continue;
-                        }
-                        let problem = self.error(format!(
-                            "Cannot chain comparison operators {} and {}",
-                            top.op, op
-                        ));
-                        self.push_problem(problem);
-                        break ERROR;
-                    }
-                }
-                break OP_INFIX;
-            };
-            assert!(self.with_node(op_node).expect_advance(op).is_ok());
-            stack.push(StackEntry {
-                checkpoint,
-                op,
-                right_power,
-            });
-            checkpoint = self.checkpoint();
-            if let Err(problem) = self.level_prefix(follow) {
-                break Err(problem);
-            }
-        };
-        for entry in stack.into_iter().rev() {
-            self.with_node_at(entry.checkpoint, EXPR_INFIX);
-        }
-        res
+        self.infix(EXPR_INFIX, Self::level_prefix, INFIX_OPS, binding_power, follow.into())
     }
 
     pub(crate) fn level_prefix(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
