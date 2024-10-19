@@ -17,66 +17,57 @@ in the resulting CST.
 
 ```fsharp
 PROGRAM = {DEFN}
-@DEFN = DEFN_TYPE | DEFN_FN
+@DEFN = DEFN_TYPE | DEFN_TYPE_REC | DEFN_LET | DEFN_LET_REC
 
-DEFN_TYPE = "type" IDENT "=" @TYPE ";"
-DEFN_FN = "fn" IDENT SIGNATURE BLOCK
+DEFN_TYPE = "type" BIND_TYPE
+DEFN_TYPE_REC = "type" "rec" BIND_TYPE {"and" BIND_TYPE}
 
-@TYPE = @LEVEL_TYPE_FN
-@LEVEL_TYPE_FN = @LEVEL_UNION | TYPE_FN
-TYPE_FN = "fn" "(" LIST_TYPES ")" "->" @LEVEL_TYPE_FN
-@LEVEL_UNION = @LEVEL_INTERSECTION | TYPE_UNION
-TYPE_UNION = @LEVEL_INTERSECTION "|" @LEVEL_UNION
-@LEVEL_INTERSECTION = @LEVEL_COMPLEMENT | TYPE_INTERSECTION
-TYPE_INTERSECTION = @LEVEL_COMPLEMENT "&" @LEVEL_INTERSECTION
-@LEVEL_COMPLEMENT = @LEVEL_BASIC | TYPE_COMPLEMENT
-TYPE_COMPLEMENT = "~" @LEVEL_COMPLEMENT
-@LEVEL_BASIC = TYPE_BUILTIN | TYPE_REF | TYPE_TUPLE | TYPE_PAREN
-TYPE_BUILTIN = "Bool" | "Int" | "Never" | "Any"
+BIND_TYPE = IDENT "=" @TYPE
+
+(* Precendence/associativity of infix operators is given in table below. *)
+@TYPE = @LEVEL_TYPE_INFIX
+@LEVEL_TYPE_INFIX = @LEVEL_TYPE_PREFIX | TYPE_INFIX
+TYPE_INFIX = @LEVEL_TYPE_INFIX OP_TYPE_INFIX @LEVEL_TYPE_INFIX
+@LEVEL_TYPE_PREFIX = @LEVEL_TYPE_ATOM | TYPE_PREFIX
+TYPE_PREFIX = OP_TYPE_PREFIX @LEVEL_TYPE_PREFIX
+@LEVEL_TYPE_ATOM =  TYPE_BUILTIN | TYPE_REF | TYPE_PAREN
+TYPE_BUILTIN = "Bot" | "Top" | "Bool" | "Int" | "Unit"
 TYPE_REF = IDENT
-(* A 1-tuple must have a trailing comma! *)
-TYPE_TUPLE = "(" [@TYPE "," [@TYPE {"," @TYPE}]] ")"
 TYPE_PAREN = "(" @TYPE ")"
 
-LIST_TYPES = [@TYPE {"," @TYPE}]
+OP_TYPE_INFIX = "->" | "\/" | "/\ " | "*"
+OP_TYPE_PREFX = "~"
 
-BLOCK = "{" @BLOCK_INNER "}"
-@BLOCK_INNER = {@STMT} [@EXPR]
+DEFN_LET = "let" BIND_EXPR
+DEFN_LET_REC = "let" "rec" BIND_EXPR {"and" BIND_EXPR}
 
-@STMT = STMT_ASSIGN | STMT_EXPR | STMT_IF | STMT_LET
-STMT_ASSIGN = @EXPR "=" @EXPR ";"
-STMT_EXPR = @EXPR ";"
-STMT_IF = "if" @EXPR BLOCK ["else" (BLOCK | STMT_IF)]
-STMT_LET = "let" BINDING ";"
-STMT_LET_REC = "let" "rec" BINDING {"and" BINDING} ";"
+BIND_EXPR = @PAT "=" @EXPR
 
-@EXPR = @LEVEL_TERTIARY
-@LEVEL_TERTIARY = @LEVEL_INFIX | EXPR_TERTIARY
-EXPR_TERTIARY = @LEVEL_INFIX "?" @LEVEL_TERTIARY ":" @LEVEL_TERTIARY
-@LEVEL_INFIX = @LEVEL_PREFIX | EXPR_INFIX
-(* Precedence and associativity of infix operators are handled in a later step. *)
-EXPR_INFIX = @LEVEL_PREFIX OP_INFIX @LEVEL_INFIX
-@LEVEL_PREFIX = @LEVEL_POSTFIX | EXPR_PREFIX
-EXPR_PREFIX = OP_PREFIX @LEVEL_PREFIX
-@LEVEL_POSTFIX = @LEVEL_ATOM | EXPR_CALL | EXPR_SELECT
-EXPR_CALL = @LEVEL_POSTFIX ARGS
-EXPR_SELECT = @LEVEL_POSTFIX "." LIT_NAT
-@LEVEL_ATOM = EXPR_LIT | EXPR_VAR | EXPR_TUPLE | EXPR_FN | EXPR_PAREN
+@PAT = PAT_IDENT | PAT_PAIR
+PAT_IDENT = IDENT
+PAT_PAIR = "(" @PAT "," @PAT ")"
+
+(* Precendence/associativity of infix operators is given in table below. *)
+@EXPR = @LEVEL_EXPR_INFIX
+@LEVEL_EXPR_INFIX = @LEVEL_EXPR_PREFIX | EXPR_INFIX
+EXPR_INFIX = @LEVEL_EXPR_INFIX OP_EXPR_INFIX @LEVEL_EXPR_INFIX
+@LEVEL_EXPR_PREFIX = @LEVEL_POSTFIX | EXPR_PREFIX
+EXPR_PREFIX = OP_EXPR_PREFIX @LEVEL_EXPR_PREFIX
+@LEVEL_EXPR_APP = @LEVEL_EXPR_ATOM | EXPR_APP
+EXPR_APP = @LEVEL_EXPR_APP @LEVEL_EXPR_ATOM
+@LEVEL_EXPR_ATOM = EXPR_LIT | EXPR_REF | EXPR_UNIT | EXPR_PAIR | EXPR_FUN | EXPR_LET | EXPR_LET_REC | EXPR_IF | EXPR_PAREN
 EXPR_LIT = LIT_NAT | @LIT_BOOL
-EXPR_VAR = IDENT
-(* A 1-tuple must have a trailing comma! *)
-EXPR_TUPLE = "(" [@EXPR "," [@EXPR {"," @EXPR}]] ")"
-EXPR_FN = "fn" SIGNATURE BLOCK
+EXPR_REF = IDENT
+EXPR_UNIT = "(" ")"
+EXPR_PAIR = "(" @EXPR "," @EXPR ")"
+EXPR_FUN = "fun" @PAT "->" @EXPR
+EXPR_LET = "let" BIND_EXPR "in" @EXPR
+EXPR_LET_REC = "let" "rec" BIND_EXPR {"and" BIND_EXPR} "in" @EXPR
+EXPR_IF = "if" @EXPR "then" @EXPR "else" @EXPR
 EXPR_PAREN = "(" @EXPR ")"
 
-SIGNATURE = "(" [BINDER {"," BINDER}] ")" ["->" @TYPE]
-BINDER = ["mut"] IDENT [":" @TYPE]
-BINDING = BINDER "=" @EXPR
-
-ARGS = "(" [@EXPR {"," @EXPR}] ")"
-
-OP_INFIX = "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
-OP_PREFIX = "!"
+OP_EXPR_INFIX = "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
+OP_EXPR_PREFIX = "!"
 
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 
@@ -90,53 +81,46 @@ LIT_NAT = r"0|[1-9][0-9]*"
 KW_AND = "and"
 KW_ELSE = "else"
 KW_FALSE = "false"
-KW_FN = "fn"
+KW_FUN = "fun"
 KW_IF = "if"
 KW_LET = "let"
-KW_MUT = "mut"
 KW_REC = "rec"
+KW_THEN = "then"
 KW_TRUE = "true"
 KW_TYPE = "type"
 
 (* Builtin types *)
-KW_ANY = "Any" (* The top type. *)
-KW_BOOL = "Bool"
-KW_INT = "Int"
-KW_NEVER = "Never" (* The bottom type. *)
+TY_BOOL = "Bool"
+TY_BOT = "Bot" (* The empty type. *)
+TY_INT = "Int"
+TY_TOP = "Top" (* The universal type. *)
+TY_UNIT = "Unit"
 
 (* Delimiters *)
-LANGLE = "<"
-RANGLE = ">"
-LBRACE = "{"
-RBRACE = "}"
-LBRACKET = "["
-RBRACKET = "]"
 RPAREN = ")"
 LPAREN = "("
 
 (* Operators & separators *)
-AMPER = "&"
-AMPER_AMPER = "&&"
-BANG = "!"
-BANG_EQUALS = "!="
-BAR = "|"
-BAR_BAR = "||"
-COLON = ":"
+AND = "&&"
+ARROW = "->"
 COMMA = ","
-DOT = "."
-EQUALS = "="
-EQUALS_EQUALS = "=="
-LANGLE_EQUALS = "<="
+COMPL = "~"
+DIV = "/"
+EQ = "="
+EQ_EQ = "=="
+GT = ">"
+GT_EQ = ">="
+INTER = "/\ "
+LT = "<"
+LT_EQ = "<="
 MINUS = "-"
-MINUS_RANGLE = "->"
-QUERY = "?"
-RANGLE_EQUALS = ">="
-PERCENT = "%"
+MOD = "%"
+NOT = "!"
+NOT_EQ = "!="
+OR = "||"
 PLUS = "+"
-SEMI = ";"
-SLASH = "/"
-STAR = "*"
-TILDE = "~"
+TIMES = "*"
+UNION = "\/"
 ```
 
 ### Operator precedence and associativity
@@ -152,15 +136,63 @@ their associativity. (The examples in the rows between two operations involve op
     </thead>
     <tbody>
         <tr>
-            <td>Tertiary <code>A ? B  : C</code></td>
+            <td>Function type <code>-></code></td>
             <td>right</td>
-            <td><code>A ? B : C ? D : E</code> means <code>A ? B : (C ? D : E)</code></td>
+            <td><code>A -> B -> C</code> means <code>A -> (B -> C)</code></td>
         </tr>
         <tr>
             <td></td>
             <td></td>
-            <td><code>A || B ? C || D ? E || F</code> means <code>(A || B) ? (C || D) : (E || F)</code></td>
+            <td>
+                <code>A \/ B -> C</code> means <code>(A \/ B) -> C</code><br/>
+                <code>A -> B \/ C</code> means <code>A -> (B \/ C)</code>
+            </td>
         </tr>
+        <tr>
+            <td>Union <code>\/</code></td>
+            <td>right</td>
+            <td><code>A \/ B \/ C</code> means <code>A \/ (B \/ C)</code></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td><code>A /\ B \/ C</code> means <code>(A /\ B) \/ C</code></td>
+        </tr>
+        <tr>
+            <td>Intersection <code>/\</code></td>
+            <td>right</td>
+            <td><code>A /\ B /\ C</code> means <code>A /\ (B /\ C)</code></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td><code>A * B /\ C</code> means <code>(A * B) /\ C</code></td>
+        </tr>
+        <tr>
+            <td>Product <code>*</code></td>
+            <td>right</td>
+            <td><code>A * B * C</code> means <code>A * (B * C)</code></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td><code>~A * B</code> means <code>(~A) * B</code></td>
+        </tr>
+        <tr>
+            <td>Complement <code>~</code></td>
+            <td>right</td>
+            <td><code>~~A</code> means <code>~(~A)</code></td>
+        </tr>
+    </tbody>
+</table>
+
+<table>
+    <thead>
+        <th>Operation</th>
+        <th>Associativity</th>
+        <th>Example</th>
+    </thead>
+    <tbody>
         <tr>
             <td>Disjunction <code>||</code></td>
             <td>right</td>
@@ -219,20 +251,12 @@ their associativity. (The examples in the rows between two operations involve op
         <tr>
             <td></td>
             <td></td>
-            <td>
-                <code>!A.0</code> means <code>!(A.0)</code><br />
-                <code>!A(B)</code> means <code>!(A(B))</code>
-            </td>
+            <td><code>!A B</code> means <code>!(A B)</code></td>
         </tr>
         <tr>
-            <td>
-                Postfix operations <code>A.0 A(B)</code> (select, call)
-            </td>
+            <td>Application <code>A B</code></td>
             <td>left</td>
-            <td>
-                <code>A(B).0</code> means <code>(A(B)).0</code><br />
-                <code>A.0(B)</code> means <code>(A.0)(B)</code>
-            </td>
+            <td><code>A B C</code> means <code>(A B) C</code></td>
         </tr>
     </tbody>
 </table>
