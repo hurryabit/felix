@@ -1,7 +1,7 @@
 import { RefObject, useCallback, useEffect, useMemo, useState } from "react";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
-import "ace-builds/src-noconflict/mode-rust";
+import "ace-builds/src-noconflict/mode-ocaml";
 import "ace-builds/src-noconflict/theme-github_dark";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
@@ -133,7 +133,7 @@ export default function Editor({
             onChange={setProgram}
             onCursorChange={onCursorChange}
             onSelectionChange={onSelectionChange}
-            mode="rust"
+            mode="ocaml"
             theme="github_light_default"
             // theme="github_dark"
             annotations={annotations}

@@ -6,6 +6,7 @@ impl<'a> Parser<'a> {
         &mut self,
         operation_node: NodeKind,
         operand: fn(&mut Self, follow: TokenKindSet) -> Result<()>,
+        operator_node: NodeKind,
         operators: TokenKindSet,
         operator_power: fn(TokenKind) -> (u32, u32),
         follow: TokenKindSet,
@@ -46,17 +47,16 @@ impl<'a> Parser<'a> {
                         break NodeKind::ERROR;
                     }
                 }
-                break NodeKind::OP_INFIX;
+                break operator_node;
             };
-            assert!(self.peek() == op);
-            self.with_node(op_node).advance();
+            self.with_node(op_node).advance(op);
             stack.push(StackEntry {
                 checkpoint,
                 op,
                 right_power,
             });
             checkpoint = self.checkpoint();
-            if let Err(problem) = self.level_prefix(follow) {
+            if let Err(problem) = operand(self, follow) {
                 break Err(problem);
             }
         };
@@ -71,6 +71,7 @@ impl<'a> Parser<'a> {
         operation_node: NodeKind,
         operand: fn(&mut Self, follow: TokenKindSet) -> Result<()>,
         operand_first: TokenKindSet,
+        operator_node: NodeKind,
         operators: TokenKindSet,
         follow: TokenKindSet,
     ) -> Result<()> {
@@ -79,7 +80,7 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 token if token.is(operators) => {
                     stack.push(self.checkpoint());
-                    self.with_node(NodeKind::OP_PREFIX).advance();
+                    self.with_node(operator_node).advance(token);
                 }
                 token if token.is(operand_first) => break operand(self, follow),
                 token => break Err(self.expecation_error(token, operators | operand_first)),

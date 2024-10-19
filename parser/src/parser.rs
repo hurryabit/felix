@@ -151,11 +151,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn advance(&mut self) -> TokenKind {
+    pub(crate) fn advance(&mut self, expected: impl Into<TokenKindSet>) -> TokenKind {
         let (token, span) = self.peek_with_span();
-        if token == EOF {
-            panic!("advancing past end-of-file");
-        }
+        assert!(token.is(expected.into()));
+        assert!(token != EOF);
         self.commit_trivia();
         self.builder
             .token(token.into(), &self.input[span.into_range()]);
@@ -167,8 +166,8 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: impl Into<TokenKindSet>,
     ) -> Result<TokenKind> {
-        self.expect(expected)?;
-        Ok(self.advance())
+        let token = self.expect(expected)?;
+        Ok(self.advance(token))
     }
 
     /// Skip tokens until a one from the expected set or EOF is found. This function is
@@ -182,7 +181,8 @@ impl<'a> Parser<'a> {
         }
         let mut parser = self.with_node(ERROR);
         while !parser.peek().is(expected) {
-            parser.advance();
+            let token = parser.peek();
+            parser.advance(token);
         }
         parser.peek()
     }

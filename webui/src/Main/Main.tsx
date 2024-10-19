@@ -8,30 +8,22 @@ import Problems from "../Problems/Problems";
 import SyntaxTree from "../SyntaxTree/SyntaxTree";
 import * as classes from "./Main.css";
 
-const SAMPLE_PROGRAM = `// Recursive version of Fibonacci.
-fn fib_rec(n) {
-    if n <= 1 {
-        n
-    } else {
-        fib_rec(n-1) + fib_rec(n-1)
-    }
-}
+const SAMPLE_PROGRAM = `(* Slow recursive version of Fibonacci. *)
+let rec fib_slow = fun n ->
+    if n <= 1 then
+        0
+    else
+        fib (n-1) + fib (n-2)
 
-// Loop-via-tail-recusrsion version of Fibonacci.
-fn fib_tailrec(n) {
-    let mut a = 0;
-    let mut b = 1;
-    let rec go = |n| {
-        if n > 0 {
-            let c = b;
-            b = a + b;
-            a = c;
-            go(n-1);
-        }
-    };
-    go(n);
-    a
-}
+(* Faster tail-recursive version of Fibonacci. *)
+let fib_faster = fun n ->
+    let rec go = fun (n, (a, b)) ->
+        if n == 0 then
+            a
+        else
+            go (n-1, (b, a+b))
+    in
+    go (n, (0, 1))
 `;
 
 export default function Main() {
