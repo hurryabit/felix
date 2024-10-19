@@ -276,26 +276,23 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.infix(EXPR_INFIX, Self::level_prefix, INFIX_OPS, binding_power, follow.into())
+        self.infix(
+            EXPR_INFIX,
+            Self::level_prefix,
+            INFIX_OPS,
+            binding_power,
+            follow.into(),
+        )
     }
 
     pub(crate) fn level_prefix(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {
-        let mut stack: Vec<rowan::Checkpoint> = Vec::new();
-        let res = loop {
-            let token = self.peek();
-            if token.is(PREFIX_OPS) {
-                stack.push(self.checkpoint());
-                self.with_node(OP_PREFIX).advance();
-            } else if token.starts(LEVEL_POSTFIX) {
-                break self.level_postfix(follow);
-            } else {
-                break Err(self.expecation_error(token, LEVEL_PREFIX.first()));
-            }
-        };
-        for checkpoint in stack.into_iter().rev() {
-            self.with_node_at(checkpoint, EXPR_PREFIX);
-        }
-        res
+        self.prefix(
+            EXPR_PREFIX,
+            Self::level_postfix,
+            LEVEL_POSTFIX.first(),
+            PREFIX_OPS,
+            follow.into(),
+        )
     }
 
     pub(crate) fn level_postfix(&mut self, follow: impl Into<TokenKindSet>) -> Result<()> {

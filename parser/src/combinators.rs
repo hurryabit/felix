@@ -65,4 +65,29 @@ impl<'a> Parser<'a> {
         }
         res
     }
+
+    pub(crate) fn prefix(
+        &mut self,
+        operation_node: NodeKind,
+        operand: fn(&mut Self, follow: TokenKindSet) -> Result<()>,
+        operand_first: TokenKindSet,
+        operators: TokenKindSet,
+        follow: TokenKindSet,
+    ) -> Result<()> {
+        let mut stack: Vec<rowan::Checkpoint> = Vec::new();
+        let res = loop {
+            match self.peek() {
+                token if token.is(operators) => {
+                    stack.push(self.checkpoint());
+                    self.with_node(NodeKind::OP_PREFIX).advance();
+                }
+                token if token.is(operand_first) => break operand(self, follow),
+                token => break Err(self.expecation_error(token, operators | operand_first)),
+            }
+        };
+        for checkpoint in stack.into_iter().rev() {
+            self.with_node_at(checkpoint, operation_node);
+        }
+        res
+    }
 }
