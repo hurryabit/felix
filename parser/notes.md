@@ -41,7 +41,7 @@ OP_TYPE_PREFX = "~"
 DEFN_LET = "let" BIND_EXPR
 DEFN_LET_REC = "let" "rec" BIND_EXPR {"and" BIND_EXPR}
 
-BIND_EXPR = @PAT "=" @EXPR
+BIND_EXPR = @PAT [":" @TYPE] "=" @EXPR
 
 @PAT = PAT_IDENT | PAT_UNIT | PAT_PAIR
 PAT_IDENT = IDENT
@@ -104,6 +104,7 @@ LPAREN = "("
 (* Operators & separators *)
 AND = "&&"
 ARROW = "->"
+COLON = ":"
 COMMA = ","
 COMPL = "~"
 DIV = "/"

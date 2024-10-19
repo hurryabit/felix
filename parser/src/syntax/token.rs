@@ -62,6 +62,8 @@ pub enum TokenKind {
     AND,
     #[token("->")]
     ARROW,
+    #[token(":")]
+    COLON,
     #[token(",")]
     COMMA,
     #[token("~")]

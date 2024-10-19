@@ -138,7 +138,11 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn bind_expr(&mut self, follow: TokenKindSet) -> Result<()> {
         let mut parser = self.with_node(BIND_EXPR);
-        parser.pat(EQ.into())?;
+        parser.pat(COLON | EQ)?;
+        if parser.expect(COLON | EQ)? == COLON {
+            parser.advance(COLON);
+            parser.type_(EQ.into())?;
+        }
         parser.expect_advance(EQ)?;
         parser.expr(follow)
     }

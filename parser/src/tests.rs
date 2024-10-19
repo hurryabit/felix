@@ -464,7 +464,7 @@ fn infix() {
 }
 
 #[test]
-fn call() {
+fn app() {
     let syntax = parse_success("let rec f = fun x -> f x");
     assert_debug_snapshot!(syntax, @r#"
     PROGRAM@0..24
@@ -493,6 +493,64 @@ fn call() {
               WHITESPACE@22..23 " "
               EXPR_REF@23..24
                 IDENT@23..24 "x"
+    "#);
+}
+
+#[test]
+fn type_annot() {
+    let syntax = parse_success(r"let f: (Bool -> Bool) /\ (Int -> Int) = fun x -> x");
+    assert_debug_snapshot!(syntax, @r#"
+    PROGRAM@0..50
+      DEFN_LET@0..50
+        KW_LET@0..3 "let"
+        WHITESPACE@3..4 " "
+        BIND_EXPR@4..50
+          PAT_IDENT@4..5
+            IDENT@4..5 "f"
+          COLON@5..6 ":"
+          WHITESPACE@6..7 " "
+          TYPE_INFIX@7..37
+            TYPE_PAREN@7..21
+              LPAREN@7..8 "("
+              TYPE_INFIX@8..20
+                TYPE_BUILTIN@8..12
+                  TY_BOOL@8..12 "Bool"
+                WHITESPACE@12..13 " "
+                OP_TYPE_INFIX@13..15
+                  ARROW@13..15 "->"
+                WHITESPACE@15..16 " "
+                TYPE_BUILTIN@16..20
+                  TY_BOOL@16..20 "Bool"
+              RPAREN@20..21 ")"
+            WHITESPACE@21..22 " "
+            OP_TYPE_INFIX@22..24
+              INTER@22..24 "/\\"
+            WHITESPACE@24..25 " "
+            TYPE_PAREN@25..37
+              LPAREN@25..26 "("
+              TYPE_INFIX@26..36
+                TYPE_BUILTIN@26..29
+                  TY_INT@26..29 "Int"
+                WHITESPACE@29..30 " "
+                OP_TYPE_INFIX@30..32
+                  ARROW@30..32 "->"
+                WHITESPACE@32..33 " "
+                TYPE_BUILTIN@33..36
+                  TY_INT@33..36 "Int"
+              RPAREN@36..37 ")"
+          WHITESPACE@37..38 " "
+          EQ@38..39 "="
+          WHITESPACE@39..40 " "
+          EXPR_FUN@40..50
+            KW_FUN@40..43 "fun"
+            WHITESPACE@43..44 " "
+            PAT_IDENT@44..45
+              IDENT@44..45 "x"
+            WHITESPACE@45..46 " "
+            ARROW@46..48 "->"
+            WHITESPACE@48..49 " "
+            EXPR_REF@49..50
+              IDENT@49..50 "x"
     "#);
 }
 
