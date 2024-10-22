@@ -37,7 +37,7 @@ export default function App() {
                                     fontFamily: vars.fontFamilyMonospace,
                                 }}
                             >
-                                felix{" "}
+                                feλix{" "}
                             </span>
                             Playground for compiler frontend and programming language experiments.
                         </Text>

@@ -1,12 +1,14 @@
 import { RefObject, useCallback, useEffect, useMemo, useState } from "react";
+import { Ace } from "ace-builds/ace";
+import { Range } from "ace-builds/src-noconflict/ace";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
 
-import "ace-builds/src-noconflict/mode-ocaml";
-import "ace-builds/src-noconflict/theme-github_dark";
+import "ace-builds/src-noconflict/ext-language_tools";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
 import type * as syntax from "felix-wasm-bridge";
 import { vars } from "../theme";
+import LambdaMode from "./Lambda";
 import * as classes from "./Editor.css";
 
 interface IAcePoint {
@@ -59,6 +61,37 @@ function makeMarker(span: SrcSpan, className: string): IMarker {
     };
 }
 
+function replaceInSession(session: Ace.EditSession, range: Ace.Range, replacement: string) {
+    const original = session.getTextRange(range);
+    session.replace(range, replacement);
+    const undoManager = session.getUndoManager();
+    undoManager.add(
+        {
+            action: "insert",
+            start: range.end,
+            end: { row: range.end.row, column: range.end.column + replacement.length },
+            lines: [replacement],
+        },
+        false,
+        session,
+    );
+    undoManager.add(
+        { action: "remove", start: range.start, end: range.end, lines: [original] },
+        true,
+        session,
+    );
+}
+
+const substitutions: Map<string, string> = new Map([
+    ["forall", "∀"],
+    ["Lam", "Λ"],
+    ["lam", "λ"],
+    ["mu", "μ"],
+    ["/\\", "∩"],
+    ["\\/", "∪"],
+    ["~", "¬"],
+]);
+
 type Props = {
     aceRef: RefObject<AceEditor>;
     program: string;
@@ -106,9 +139,59 @@ export default function Editor({
 
     useEffect(
         function () {
-            aceRef.current?.editor.gotoLine(1, 0, true);
+            const lambdaMode = new LambdaMode();
+            const editor = aceRef.current?.editor;
+            // @ts-expect-error: LambdaMode is not properly typed anyway.
+            editor?.session.setMode(lambdaMode);
+            editor?.session.setUndoSelect(false);
+            editor?.gotoLine(1, 0, true);
         },
         [aceRef],
+    );
+
+    const onChange = useCallback(
+        function (value: string, delta: Ace.Delta) {
+            setProgram(value);
+            if (delta.action !== "insert") {
+                return;
+            }
+            const session = aceRef.current?.editor.session;
+            if (session === undefined) {
+                console.error("No editor session.");
+                return;
+            }
+            let token;
+            let length;
+
+            // Space triggers keyword substitution (e.g. "lam " -> "λ").
+            if (delta.lines.length === 1 && delta.lines[0] === " ") {
+                token = session.getTokenAt(delta.end.row, delta.end.column - 1);
+                if (token === null || token.type !== "keyword.long") {
+                    return;
+                }
+                length = token.value.length + 1;
+            } else {
+                token = session.getTokenAt(delta.end.row, delta.end.column);
+                if (
+                    token === null ||
+                    token.type !== "keyword.operator.long" ||
+                    token.start! + token.value.length !== delta.end.column
+                ) {
+                    return;
+                }
+                length = token.value.length;
+            }
+            const short = substitutions.get(token.value);
+            if (short === undefined) {
+                console.error(
+                    `Found long keyword/operator without substitution: "${token.value}".`,
+                );
+                return;
+            }
+            const start = { row: delta.end.row, column: delta.end.column - length };
+            replaceInSession(session, Range.fromPoints(start, delta.end), short);
+        },
+        [aceRef, setProgram],
     );
 
     const onCursorChange = useCallback(
@@ -130,18 +213,16 @@ export default function Editor({
             focus
             width="100%"
             height="100%"
-            onChange={setProgram}
+            onChange={onChange}
             onCursorChange={onCursorChange}
             onSelectionChange={onSelectionChange}
-            mode="ocaml"
+            mode="text"
             theme="github_light_default"
-            // theme="github_dark"
             annotations={annotations}
             markers={markers}
             setOptions={{
-                // TODO: Make custom language and set up autocompletion.
-                // enableBasicAutocompletion: true,
-                // enableLiveAutocompletion: true,
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: false, // We want to trigger autocompletion manually.
                 fontFamily: vars.fontFamilyMonospace,
                 fontSize: vars.fontSizes.md,
                 highlightActiveLine: false,
