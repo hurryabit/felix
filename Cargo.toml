@@ -2,6 +2,7 @@
 members = [
     "common",
     "parser",
+    "type-checker",
     "wasm-bridge",
 ]
 resolver = "2"
