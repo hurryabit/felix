@@ -1,293 +1,718 @@
+#![allow(dead_code, unused_variables)]
+use std::rc::Rc;
+
+mod typ {
+    use std::{fmt::Display, rc::Rc};
+
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    pub enum Type {
+        Var(&'static str),
+        Arrow(Rc<Type>, Rc<Type>),
+        Unit,
+    }
+
+    impl Display for Type {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Type::Var(name) => write!(f, "{}", name),
+                Type::Arrow(param, res) => write!(f, "({} -> {})", param, res),
+                Type::Unit => write!(f, "Unit"),
+            }
+        }
+    }
+
+    pub fn tvar(name: &'static str) -> Type {
+        Type::Var(name)
+    }
+
+    pub fn arrow(param: Type, res: Type) -> Type {
+        Type::Arrow(Rc::new(param), Rc::new(res))
+    }
+
+    pub const UNIT: Type = Type::Unit;
+}
+
+pub use typ::Type;
+
 mod cst {
+    use std::rc::Rc;
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    #[allow(non_camel_case_types)]
     pub enum TokenKind {
-        LowerIdent,
-        Keyword,
-        Punctuation,
+        IDENT_EXPR,
+        KW_LAM,
+        KW_LET,
+        KW_IN,
+        KW_UNIT,
+        PU_COLON,
+        PU_DOT,
+        PU_EQ,
     }
 
-    #[derive(PartialEq, Eq)]
+    use TokenKind::*;
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    #[allow(non_camel_case_types)]
     pub enum NodeKind {
-        ExprLet,
-        ExprUnit,
+        BROKEN,
+        EXPR_VAR,
+        EXPR_ABS,
+        EXPR_APP,
+        EXPR_LET,
+        EXPR_UNIT,
     }
 
-    pub struct Token<'a> {
+    use NodeKind::*;
+
+    #[derive(Clone, Debug)]
+    pub struct Token {
         pub kind: TokenKind,
-        pub value: &'a str,
+        pub value: Rc<String>,
     }
 
-    pub struct Node<'a> {
+    #[derive(Clone, Debug)]
+    pub struct Node {
         pub kind: NodeKind,
-        pub children: Vec<Child<'a>>,
+        pub children: Rc<Vec<Child>>,
     }
 
-    pub enum Child<'a> {
-        Token(Token<'a>),
-        Node(Node<'a>),
+    #[derive(Clone, Debug)]
+    pub enum Child {
+        Token(Token),
+        Node(Node),
+        Type(super::Type), // TODO: Remove this shortcut.
     }
-}
 
-struct EVar<'a>(&'a str);
-
-enum Type {
-    Unit,
-}
-
-struct Let<'a> {
-    node: &'a cst::Node<'a>,
-    binder: EVar<'a>,
-    bindee: &'a cst::Node<'a>,
-    body: &'a cst::Node<'a>,
-}
-
-impl<'a> From<Let<'a>> for &'a cst::Node<'a> {
-    fn from(value: Let<'a>) -> Self {
-        value.node
+    fn token(kind: TokenKind, value: &str) -> Child {
+        let value = Rc::new(String::from(value));
+        Child::Token(Token { kind, value })
     }
-}
 
-impl<'a> TryFrom<&'a cst::Node<'a>> for Let<'a> {
-    type Error = ();
-
-    fn try_from(node: &'a cst::Node<'a>) -> std::result::Result<Self, Self::Error> {
-        if node.kind != cst::NodeKind::ExprLet {
-            return Err(());
-        }
-        if let [cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::Keyword,
-            value: "let",
-        }), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::LowerIdent,
-            value: binder,
-        }), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::Punctuation,
-            value: "=",
-        }), cst::Child::Node(bindee), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::Keyword,
-            value: "in",
-        }), cst::Child::Node(body)] = &node.children[..]
-        {
-            Ok(Let {
-                node,
-                binder: EVar(binder),
-                bindee,
-                body,
-            })
-        } else {
-            Err(())
+    fn node(kind: NodeKind, children: Vec<Child>) -> Node {
+        Node {
+            kind,
+            children: Rc::new(children),
         }
     }
+
+    pub fn broken() -> Node {
+        node(BROKEN, vec![])
+    }
+
+    pub fn var(name: &str) -> Node {
+        node(EXPR_VAR, vec![token(IDENT_EXPR, name)])
+    }
+
+    pub fn abs(binder: &str, typ: super::Type, body: Node) -> Node {
+        node(
+            EXPR_ABS,
+            vec![
+                token(KW_LAM, "λ"),
+                token(IDENT_EXPR, binder),
+                token(PU_COLON, ":"),
+                Child::Type(typ),
+                token(PU_DOT, "."),
+                Child::Node(body),
+            ],
+        )
+    }
+
+    pub fn app(fun: Node, arg: Node) -> Node {
+        node(EXPR_APP, vec![Child::Node(fun), Child::Node(arg)])
+    }
+
+    pub fn let_(binder: &str, bindee: Node, body: Node) -> Node {
+        node(
+            EXPR_LET,
+            vec![
+                token(KW_LET, "let"),
+                token(IDENT_EXPR, binder),
+                token(PU_EQ, "="),
+                Child::Node(bindee),
+                token(KW_IN, "in"),
+                Child::Node(body),
+            ],
+        )
+    }
+
+    pub fn unit() -> Node {
+        node(EXPR_UNIT, vec![token(TokenKind::KW_UNIT, "unit")])
+    }
 }
 
-trait Pattern<'a>: Into<&'a cst::Node<'a>> + TryFrom<&'a cst::Node<'a>> {
+trait Pattern: TryFrom<cst::Node, Error = cst::Node> {
     const KIND: cst::NodeKind;
 }
 
-impl<'a> Pattern<'a> for Let<'a> {
-    const KIND: cst::NodeKind = cst::NodeKind::ExprLet;
-}
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct Ident(Rc<String>);
 
-struct Context;
-
-impl Context {
-    fn extend_evar(&self, _evar: EVar, _typ: Type) -> Self {
-        todo!()
+impl From<&str> for Ident {
+    fn from(name: &str) -> Self {
+        Self(Rc::new(String::from(name)))
     }
 }
 
-enum TypeError {}
-
-type Result<T> = std::result::Result<T, TypeError>;
-
-#[derive(Clone, Copy)]
-enum CheckMode {
-    Bidi,
+struct Broken {
+    node: cst::Node,
 }
 
-#[derive(Clone, Copy)]
-enum InferMode {
-    Simple,
-    Bidi,
+impl TryFrom<cst::Node> for Broken {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            return Err(node);
+        }
+        Ok(Broken { node })
+    }
 }
 
-trait Checker {
-    fn lookup_evar(&self, ctx: &Context, evar: EVar) -> Result<Type>;
-    fn check(&self, ctx: &Context, mode: CheckMode, node: &cst::Node, typ: Type) -> Result<()>;
-    fn infer(&self, ctx: &Context, mode: InferMode, node: &cst::Node) -> Result<Type>;
-    fn equal(&self, found: Type, expected: Type) -> Result<()>;
+impl Pattern for Broken {
+    const KIND: cst::NodeKind = cst::NodeKind::BROKEN;
 }
 
-trait InferRule {
-    type Pattern<'a>: Pattern<'a>;
-
-    const NAME: &'static str;
-    const MODE: InferMode;
-
-    fn infer<'a>(checker: &dyn Checker, ctx: &Context, pattern: Self::Pattern<'a>) -> Result<Type>;
+struct Var {
+    node: cst::Node,
+    name: Ident,
 }
 
-mod rules {
-    use super::*;
+impl TryFrom<cst::Node> for Var {
+    type Error = cst::Node;
 
-    pub enum TLet {}
-
-    impl InferRule for TLet {
-        type Pattern<'a> = Let<'a>;
-
-        const NAME: &'static str = "T-Let";
-
-        const MODE: InferMode = InferMode::Simple;
-
-        fn infer<'a>(checker: &dyn Checker, ctx: &Context, let_: Let<'a>) -> Result<Type> {
-            let t1 = checker.infer(ctx, Self::MODE, let_.bindee)?;
-            let ctx1 = ctx.extend_evar(let_.binder, t1);
-            checker.infer(&ctx1, Self::MODE, let_.body)
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            Err(node)
+        } else if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::IDENT_EXPR,
+            value: name,
+        })] = &node.children[..]
+        {
+            Ok(Var {
+                name: Ident(Rc::clone(name)),
+                node,
+            })
+        } else {
+            Err(node)
         }
     }
 }
 
-struct RulesDB {
-    infer_rules: Vec<(
-        cst::NodeKind,
-        Box<dyn Fn(&dyn Checker, &Context, &cst::Node) -> Option<Result<Type>>>,
-    )>,
+impl Pattern for Var {
+    const KIND: cst::NodeKind = cst::NodeKind::EXPR_VAR;
 }
 
-impl RulesDB {
+struct Abs {
+    node: cst::Node,
+    binder: Ident,
+    typ: Type,
+    body: cst::Node,
+}
+
+impl TryFrom<cst::Node> for Abs {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            return Err(node);
+        }
+        if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::KW_LAM,
+            ..
+        }), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::IDENT_EXPR,
+            value: binder,
+        }), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::PU_COLON,
+            ..
+        }), cst::Child::Type(typ), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::PU_DOT,
+            ..
+        }), cst::Child::Node(body)] = &node.children[..]
+        {
+            Ok(Abs {
+                binder: Ident(Rc::clone(binder)),
+                typ: typ.clone(),
+                body: body.clone(),
+                node,
+            })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for Abs {
+    const KIND: cst::NodeKind = cst::NodeKind::EXPR_ABS;
+}
+
+struct App {
+    node: cst::Node,
+    fun: cst::Node,
+    arg: cst::Node,
+}
+
+impl TryFrom<cst::Node> for App {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            return Err(node);
+        }
+        if let [cst::Child::Node(fun), cst::Child::Node(arg)] = &node.children[..] {
+            Ok(App {
+                fun: fun.clone(),
+                arg: arg.clone(),
+                node,
+            })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for App {
+    const KIND: cst::NodeKind = cst::NodeKind::EXPR_APP;
+}
+
+struct Let {
+    node: cst::Node,
+    binder: Ident,
+    bindee: cst::Node,
+    body: cst::Node,
+}
+
+impl TryFrom<cst::Node> for Let {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            return Err(node);
+        }
+        if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::KW_LET,
+            ..
+        }), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::IDENT_EXPR,
+            value: binder,
+        }), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::PU_EQ,
+            ..
+        }), cst::Child::Node(bindee), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::KW_IN,
+            ..
+        }), cst::Child::Node(body)] = &node.children[..]
+        {
+            Ok(Let {
+                binder: Ident(Rc::clone(binder)),
+                bindee: bindee.clone(),
+                body: body.clone(),
+                node,
+            })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for Let {
+    const KIND: cst::NodeKind = cst::NodeKind::EXPR_LET;
+}
+
+struct Unit {
+    node: cst::Node,
+}
+
+impl TryFrom<cst::Node> for Unit {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            return Err(node);
+        }
+        if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::KW_UNIT,
+            ..
+        })] = &node.children[..]
+        {
+            Ok(Unit { node })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for Unit {
+    const KIND: cst::NodeKind = cst::NodeKind::EXPR_UNIT;
+}
+
+enum ContextData {
+    Empty,
+    Binding {
+        ident: Ident,
+        typ: Type,
+        next: Context,
+    },
+}
+
+#[derive(Clone)]
+struct Context(Rc<ContextData>);
+
+impl Context {
+    fn new() -> Self {
+        Self(Rc::new(ContextData::Empty))
+    }
+
+    fn lookup(&self, ident: &Ident) -> Option<Type> {
+        match self.0.as_ref() {
+            ContextData::Empty => None,
+            ContextData::Binding {
+                ident: bound,
+                typ,
+                next,
+            } => {
+                if ident == bound {
+                    Some(typ.clone())
+                } else {
+                    next.lookup(ident)
+                }
+            }
+        }
+    }
+
+    fn extend(&self, ident: Ident, typ: Type) -> Self {
+        Self(Rc::new(ContextData::Binding {
+            ident,
+            typ,
+            next: self.clone(),
+        }))
+    }
+}
+
+#[derive(Debug)]
+enum TypeError {
+    BrokenNode(cst::Node),
+    UnknownEVar(Ident),
+    NoInferRule(cst::Node),
+    ExpectedArrow { found: Type },
+    TypeMismatch { found: Type, expected: Type },
+}
+
+type Result<T> = std::result::Result<T, TypeError>;
+
+trait Checker {
+    fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type>;
+    fn check(&self, ctx: &Context, node: cst::Node, typ: Type) -> Result<()>;
+    fn infer(&self, ctx: &Context, node: cst::Node) -> Result<Type>;
+    fn equal(&self, found: &Type, expected: &Type) -> Result<()>;
+    fn decompose_arrow(&self, typ: &Type) -> Result<(Type, Type)>;
+}
+
+struct InferRule {
+    name: &'static str,
+    kind: cst::NodeKind,
+    rule: Box<
+        dyn for<'a> Fn(
+            &dyn Checker,
+            &Context,
+            cst::Node,
+        ) -> std::result::Result<Result<Type>, cst::Node>,
+    >,
+}
+
+impl InferRule {
+    fn new<P: Pattern + 'static>(
+        name: &'static str,
+        rule: fn(&dyn Checker, &Context, P) -> Result<Type>,
+    ) -> Self {
+        Self {
+            name,
+            kind: P::KIND,
+            rule: Box::new(
+                move |checker: &dyn Checker, ctx: &Context, node: cst::Node| {
+                    node.try_into().map(|pattern| rule(checker, ctx, pattern))
+                },
+            ),
+        }
+    }
+}
+
+struct TypeSystem {
+    infer_rules: Vec<InferRule>,
+}
+
+impl TypeSystem {
     fn new() -> Self {
         Self {
             infer_rules: Vec::new(),
         }
     }
-    fn add_infer_rule<Rule: InferRule>(&mut self) {
-        let kind = Rule::Pattern::KIND;
-        let rule = |checker: &dyn Checker, ctx: &Context, node: &cst::Node| {
-            match node.try_into() {
-                Err(_) => None,
-                Ok(pattern) => Some(Rule::infer(checker, ctx, pattern))
-            }
-         };
-        self.infer_rules.push((kind, Box::new(rule)));
+
+    fn add_infer_rule<P: Pattern + 'static>(
+        &mut self,
+        name: &'static str,
+        rule: fn(&dyn Checker, &Context, P) -> Result<Type>,
+    ) {
+        self.infer_rules.push(InferRule::new::<P>(name, rule))
     }
 }
 
-pub fn test() {
-    let mut db = RulesDB::new();
-    db.add_infer_rule::<rules::TLet>();
+impl Checker for TypeSystem {
+    fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type> {
+        if let Some(typ) = ctx.lookup(&evar) {
+            Ok(typ)
+        } else {
+            Err(TypeError::UnknownEVar(evar.clone()))
+        }
+    }
+
+    fn check(&self, ctx: &Context, node: cst::Node, typ: Type) -> Result<()> {
+        todo!()
+    }
+
+    fn infer(&self, ctx: &Context, mut node: cst::Node) -> Result<Type> {
+        for rule in &self.infer_rules {
+            match (rule.rule)(self, ctx, node) {
+                Err(node1) => node = node1,
+                Ok(res) => return res,
+            }
+        }
+        Err(TypeError::NoInferRule(node))
+    }
+
+    fn equal(&self, found: &Type, expected: &Type) -> Result<()> {
+        match (found, expected) {
+            // TODO: We need to make sure the variables refer to the same binder.
+            (typ::Type::Var(name1), typ::Type::Var(name2)) if name1 == name2 => Ok(()),
+            (typ::Type::Arrow(found1, found2), typ::Type::Arrow(expected1, expected2)) => {
+                self.equal(found1, expected1)?;
+                self.equal(found2, expected2)
+            }
+            (typ::Type::Unit, typ::Type::Unit) => Ok(()),
+            _ => Err(TypeError::TypeMismatch {
+                found: found.clone(),
+                expected: expected.clone(),
+            }),
+        }
+    }
+
+    fn decompose_arrow(&self, typ: &Type) -> Result<(Type, Type)> {
+        match typ {
+            typ::Type::Arrow(param, res) => Ok((param.as_ref().clone(), res.as_ref().clone())),
+            _ => Err(TypeError::ExpectedArrow { found: typ.clone() }),
+        }
+    }
 }
 
-/* Haskell Prototype:
+mod stlc {
+    use super::*;
 
-{-# LANGUAGE AllowAmbiguousTypes, TypeFamilies #-}
+    fn t_broken(checker: &dyn Checker, ctx: &Context, broken: Broken) -> Result<Type> {
+        Err(TypeError::BrokenNode(broken.node))
+    }
 
-import Data.Typeable
-import qualified Data.Kind as Kind
+    fn t_var(checker: &dyn Checker, ctx: &Context, var: Var) -> Result<Type> {
+        checker.lookup(ctx, &var.name)
+    }
 
-data Type = TUnit
-  deriving (Show)
+    fn t_abs(checker: &dyn Checker, ctx: &Context, abs: Abs) -> Result<Type> {
+        let ctx = ctx.extend(abs.binder, abs.typ.clone());
+        let t_res = checker.infer(&ctx, abs.body)?;
+        Ok(typ::arrow(abs.typ, t_res))
+    }
 
-data NodeKind = NKUnit | NKZero
-  deriving (Eq)
+    fn t_app(checker: &dyn Checker, ctx: &Context, app: App) -> Result<Type> {
+        let t_fun = checker.infer(ctx, app.fun)?;
+        let (t_param, t_res) = checker.decompose_arrow(&t_fun)?;
+        let t_arg = checker.infer(ctx, app.arg)?;
+        checker.equal(&t_arg, &t_param)?;
+        Ok(t_res)
+    }
 
-data CST = CST{ kind :: NodeKind }
+    fn t_let(checker: &dyn Checker, ctx: &Context, let_: Let) -> Result<Type> {
+        let t1 = checker.infer(ctx, let_.bindee)?;
+        let ctx1 = ctx.extend(let_.binder, t1);
+        checker.infer(&ctx1, let_.body)
+    }
 
-class Typeable n => IsASTNode n where
-  nodeKind :: n -> NodeKind
-  fromCST :: CST -> Maybe n
+    fn t_unit(checker: &dyn Checker, ctx: &Context, _unit: Unit) -> Result<Type> {
+        Ok(typ::UNIT)
+    }
 
-data ExprUnit = ExprUnit
-  deriving (Typeable)
+    pub fn make() -> TypeSystem {
+        let mut ts = TypeSystem::new();
+        ts.add_infer_rule("T-Broken", t_broken);
+        ts.add_infer_rule("T-Var", t_var);
+        ts.add_infer_rule("T-Abs", t_abs);
+        ts.add_infer_rule("T-App", t_app);
+        ts.add_infer_rule("T-Let", t_let);
+        ts.add_infer_rule("T-Unit", t_unit);
+        ts
+    }
+}
 
-instance IsASTNode ExprUnit where
-  nodeKind _ = NKUnit
-  fromCST c = if kind c == NKUnit then Just ExprUnit else Nothing
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cst::*;
+    use typ::*;
 
-data ExprZero = ExprZero
-  deriving (Typeable)
+    use assert_matches::assert_matches;
 
-instance IsASTNode ExprZero where
-  nodeKind _ = NKZero
-  fromCST c = if kind c == NKZero then Just ExprZero else Nothing
+    impl std::ops::Shr<Type> for Type {
+        type Output = Type;
 
+        fn shr(self, rhs: Type) -> Self::Output {
+            arrow(self, rhs)
+        }
+    }
 
-data TypeError = NoRuleFound | ZeroNotAllowed
-  deriving (Show)
+    #[test]
+    fn pattern_broken() {
+        assert!(Broken::try_from(broken()).is_ok());
+    }
 
-class Typeable m => IsRuleMode m where
-  type Input m
-  type Output m
+    #[test]
+    fn pattern_var() {
+        assert!(Var::try_from(var("x")).is_ok());
+    }
 
-data AlwaysInfer
+    #[test]
+    fn pattern_abs() {
+        assert!(Abs::try_from(abs("x", tvar("T"), var("E"))).is_ok());
+    }
 
-data BidiInfer
+    #[test]
+    fn pattern_app() {
+        assert!(App::try_from(app(var("F"), var("A"))).is_ok());
+    }
 
-data BidiCheck
+    #[test]
+    fn pattern_unit() {
+        assert!(Unit::try_from(unit()).is_ok());
+    }
 
-instance IsRuleMode AlwaysInfer where
-  type Input AlwaysInfer = ()
-  type Output AlwaysInfer = Type
+    #[test]
+    fn rule_t_broken() {
+        let ctx = Context::new();
+        let res = stlc::make().infer(&ctx, broken());
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
-instance IsRuleMode BidiInfer where
-  type Input BidiInfer = ()
-  type Output BidiInfer = Type
+    #[test]
+    fn rule_t_var_ok() {
+        let ctx = Context::new().extend(Ident::from("x"), tvar("T"));
+        let res = stlc::make().infer(&ctx, var("x"));
+        assert_eq!(res.unwrap(), tvar("T"));
+    }
 
-instance IsRuleMode BidiCheck where
-  type Input BidiCheck = Type
-  type Output BidiCheck = ()
+    #[test]
+    fn rule_t_var_unknown() {
+        let res = stlc::make().infer(&Context::new(), var("x"));
+        assert_matches!(res, Err(TypeError::UnknownEVar(_)));
+    }
 
-class (IsRuleMode (RuleMode r), IsASTNode (ASTNode r)) => IsRule r where
-  type RuleMode r
-  type ASTNode r
+    #[test]
+    fn rule_t_abs_ok() {
+        let ctx = Context::new().extend(Ident::from("E"), tvar("S"));
+        let res = stlc::make().infer(&ctx, abs("x", tvar("T"), var("E")));
+        assert_eq!(res.unwrap(), tvar("T") >> tvar("S"));
+    }
 
-  runRule :: r -> ASTNode r -> Input (RuleMode r) -> Either TypeError (Output (RuleMode r))
+    #[test]
+    fn rule_t_abs_type_propagates() {
+        let res = stlc::make().infer(&Context::new(), abs("x", tvar("T"), var("x")));
+        assert_eq!(res.unwrap(), tvar("T") >> tvar("T"));
+    }
 
-data RuleTUnit
+    #[test]
+    fn rule_t_abs_error_propagates() {
+        let res = stlc::make().infer(&Context::new(), abs("x", tvar("T"), broken()));
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
-instance IsRule RuleTUnit where
-  type RuleMode RuleTUnit = AlwaysInfer
-  type ASTNode RuleTUnit = ExprUnit
+    #[test]
+    fn rule_t_app_ok() {
+        let ctx = Context::new()
+            .extend(Ident::from("F"), tvar("S") >> tvar("T"))
+            .extend(Ident::from("A"), tvar("S"));
+        let res = stlc::make().infer(&ctx, app(var("F"), var("A")));
+        assert_eq!(res.unwrap(), tvar("T"));
+    }
 
-  runRule _ ExprUnit () = Right TUnit
+    #[test]
+    fn rule_t_app_no_arrow() {
+        let ctx = Context::new()
+            .extend(Ident::from("F"), tvar("T"))
+            .extend(Ident::from("A"), tvar("S"));
+        let res = stlc::make().infer(&ctx, app(var("F"), var("X")));
+        assert_matches!(res, Err(TypeError::ExpectedArrow { .. }));
+    }
 
-data RuleTZero
+    #[test]
+    fn rule_t_app_mismatch() {
+        let ctx = Context::new()
+            .extend(Ident::from("F"), tvar("S") >> tvar("T"))
+            .extend(Ident::from("A"), tvar("U"));
+        let res = stlc::make().infer(&ctx, app(var("F"), var("A")));
+        assert_matches!(res, Err(TypeError::TypeMismatch { .. }));
+    }
 
-instance IsRule RuleTZero where
-  type RuleMode RuleTZero = AlwaysInfer
-  type ASTNode RuleTZero = ExprZero
+    #[test]
+    fn rule_t_app_error_propagates_fun() {
+        let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
+        let res = stlc::make().infer(&ctx, app(broken(), var("A")));
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
-  runRule _ ExprZero () = Left ZeroNotAllowed
+    #[test]
+    fn rule_t_error_propagates_arg() {
+        let ctx = Context::new().extend(Ident::from("F"), tvar("S") >> tvar("T"));
+        let res = stlc::make().infer(&ctx, app(var("F"), broken()));
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
+    #[test]
+    fn rule_t_let_ok() {
+        let ctx = Context::new()
+            .extend(Ident::from("A"), tvar("S"))
+            .extend(Ident::from("B"), tvar("T"));
+        let res = stlc::make().infer(&ctx, let_("x", var("A"), var("B")));
+        assert_eq!(res.unwrap(), tvar("T"));
+    }
 
-data AnyRule where
-  AnyRule :: IsRule r => r -> AnyRule
+    #[test]
+    fn rule_t_let_type_propagates() {
+        let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
+        let res = stlc::make().infer(&ctx, let_("x", var("A"), var("x")));
+        assert_eq!(res.unwrap(), tvar("S"));
+    }
 
-rules :: [AnyRule]
-rules =
-  [ AnyRule (undefined :: RuleTUnit)
-  , AnyRule (undefined :: RuleTZero)
-  ]
+    #[test]
+    fn rule_t_let_not_rec() {
+        let ctx = Context::new().extend(Ident::from("B"), tvar("T"));
+        let res = stlc::make().infer(&ctx, let_("x", var("x"), var("B")));
+        assert_matches!(res, Err(TypeError::UnknownEVar(_)));
+    }
 
-run :: forall (m :: Kind.Type). IsRuleMode m => CST -> Input m -> Either TypeError (Output m)
-run cst input = go rules
-  where
-    go [] = Left NoRuleFound
-    go (AnyRule r:rs) = case matchRuleMode @m r of
-      Nothing -> go rs
-      Just Refl -> case tryRule r of
-        Nothing -> go rs
-        Just res -> res
+    #[test]
+    fn rule_t_let_error_propagates_bindee() {
+        let ctx = Context::new().extend(Ident::from("B"), tvar("T"));
+        let res = stlc::make().infer(&ctx, let_("x", broken(), var("B")));
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
-    tryRule :: forall r. (IsRule r, RuleMode r ~ m) => r -> Maybe (Either TypeError (Output (RuleMode r)))
-    tryRule r
-      | kind cst /= nodeKind (undefined :: ASTNode r) = Nothing
-      | otherwise = case fromCST cst :: Maybe (ASTNode r) of
-        Nothing -> Nothing
-        Just node -> Just (runRule r node input)
+    #[test]
+    fn rule_t_let_error_propagates_body() {
+        let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
+        let res = stlc::make().infer(&ctx, let_("x", var("A"), broken()));
+        assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
 
-    matchRuleMode :: forall m r. (IsRuleMode m, IsRule r) => r -> Maybe (m :~: RuleMode r)
-    matchRuleMode _ = eqT @m @(RuleMode r)
-
-
-main :: IO ()
-main = print $ run @AlwaysInfer (CST NKUnit) ()
-*/
+    #[test]
+    fn rule_t_unit() {
+        let res = stlc::make().infer(&Context::new(), unit());
+        assert_eq!(res.unwrap(), UNIT);
+    }
+}
