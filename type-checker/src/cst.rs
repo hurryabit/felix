@@ -19,6 +19,7 @@ use TokenKind::*;
 #[allow(non_camel_case_types)]
 pub enum NodeKind {
     BROKEN,
+    BINDER,
     EXPR_VAR,
     EXPR_ABS,
     EXPR_APP,
@@ -67,14 +68,12 @@ pub fn var(name: &str) -> Node {
     node(EXPR_VAR, vec![token(IDENT_EXPR, name)])
 }
 
-pub fn abs(binder: &str, typ: super::Type, body: Node) -> Node {
+pub fn abs(binder: Node, body: Node) -> Node {
     node(
         EXPR_ABS,
         vec![
             token(KW_LAM, "λ"),
-            token(IDENT_EXPR, binder),
-            token(PU_COLON, ":"),
-            Child::Type(typ),
+            Child::Node(binder),
             token(PU_DOT, "."),
             Child::Node(body),
         ],
@@ -85,12 +84,12 @@ pub fn app(fun: Node, arg: Node) -> Node {
     node(EXPR_APP, vec![Child::Node(fun), Child::Node(arg)])
 }
 
-pub fn let_(binder: &str, bindee: Node, body: Node) -> Node {
+pub fn let_(binder: Node, bindee: Node, body: Node) -> Node {
     node(
         EXPR_LET,
         vec![
             token(KW_LET, "let"),
-            token(IDENT_EXPR, binder),
+            Child::Node(binder),
             token(PU_EQ, "="),
             Child::Node(bindee),
             token(KW_IN, "in"),
@@ -101,4 +100,19 @@ pub fn let_(binder: &str, bindee: Node, body: Node) -> Node {
 
 pub fn unit() -> Node {
     node(EXPR_UNIT, vec![token(TokenKind::KW_UNIT, "unit")])
+}
+
+pub fn binder(name: &str) -> Node {
+    node(BINDER, vec![token(IDENT_EXPR, name)])
+}
+
+pub fn binder_annot(name: &str, typ: super::Type) -> Node {
+    node(
+        BINDER,
+        vec![
+            token(IDENT_EXPR, name),
+            token(PU_COLON, ":"),
+            Child::Type(typ),
+        ],
+    )
 }

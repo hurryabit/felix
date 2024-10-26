@@ -12,9 +12,9 @@ fn t_var(checker: &dyn Checker, ctx: &Context, var: Var) -> Result<Type> {
 }
 
 fn t_abs(checker: &dyn Checker, ctx: &Context, abs: Abs) -> Result<Type> {
-    let ctx = ctx.extend(abs.binder, abs.typ.clone());
+    let ctx = ctx.extend(abs.binder.name, abs.binder.typ.clone());
     let t_res = checker.infer(&ctx, abs.body)?;
-    Ok(typ::arrow(abs.typ, t_res))
+    Ok(typ::arrow(abs.binder.typ, t_res))
 }
 
 fn t_app(checker: &dyn Checker, ctx: &Context, app: App) -> Result<Type> {
@@ -27,7 +27,7 @@ fn t_app(checker: &dyn Checker, ctx: &Context, app: App) -> Result<Type> {
 
 fn t_let(checker: &dyn Checker, ctx: &Context, let_: Let) -> Result<Type> {
     let t1 = checker.infer(ctx, let_.bindee)?;
-    let ctx1 = ctx.extend(let_.binder, t1);
+    let ctx1 = ctx.extend(let_.binder.name, t1);
     checker.infer(&ctx1, let_.body)
 }
 
@@ -91,19 +91,19 @@ mod tests {
     #[test]
     fn t_abs_ok() {
         let ctx = Context::new().extend(Ident::from("E"), tvar("S"));
-        let res = stlc::make().infer(&ctx, abs("x", tvar("T"), var("E")));
+        let res = stlc::make().infer(&ctx, abs(binder_annot("x", tvar("T")), var("E")));
         assert_eq!(res.unwrap(), tvar("T") >> tvar("S"));
     }
 
     #[test]
     fn t_abs_type_propagates() {
-        let res = stlc::make().infer(&Context::new(), abs("x", tvar("T"), var("x")));
+        let res = stlc::make().infer(&Context::new(), abs(binder_annot("x", tvar("T")), var("x")));
         assert_eq!(res.unwrap(), tvar("T") >> tvar("T"));
     }
 
     #[test]
     fn t_abs_error_propagates() {
-        let res = stlc::make().infer(&Context::new(), abs("x", tvar("T"), broken()));
+        let res = stlc::make().infer(&Context::new(), abs(binder_annot("x", tvar("T")), broken()));
         assert_matches!(res, Err(TypeError::BrokenNode(_)));
     }
 
@@ -153,35 +153,35 @@ mod tests {
         let ctx = Context::new()
             .extend(Ident::from("A"), tvar("S"))
             .extend(Ident::from("B"), tvar("T"));
-        let res = stlc::make().infer(&ctx, let_("x", var("A"), var("B")));
+        let res = stlc::make().infer(&ctx, let_(binder("x"), var("A"), var("B")));
         assert_eq!(res.unwrap(), tvar("T"));
     }
 
     #[test]
     fn t_let_type_propagates() {
         let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
-        let res = stlc::make().infer(&ctx, let_("x", var("A"), var("x")));
+        let res = stlc::make().infer(&ctx, let_(binder("x"), var("A"), var("x")));
         assert_eq!(res.unwrap(), tvar("S"));
     }
 
     #[test]
     fn t_let_not_rec() {
         let ctx = Context::new().extend(Ident::from("B"), tvar("T"));
-        let res = stlc::make().infer(&ctx, let_("x", var("x"), var("B")));
+        let res = stlc::make().infer(&ctx, let_(binder("x"), var("x"), var("B")));
         assert_matches!(res, Err(TypeError::UnknownEVar(_)));
     }
 
     #[test]
     fn t_let_error_propagates_bindee() {
         let ctx = Context::new().extend(Ident::from("B"), tvar("T"));
-        let res = stlc::make().infer(&ctx, let_("x", broken(), var("B")));
+        let res = stlc::make().infer(&ctx, let_(binder("x"), broken(), var("B")));
         assert_matches!(res, Err(TypeError::BrokenNode(_)));
     }
 
     #[test]
     fn t_let_error_propagates_body() {
         let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
-        let res = stlc::make().infer(&ctx, let_("x", var("A"), broken()));
+        let res = stlc::make().infer(&ctx, let_(binder("x"), var("A"), broken()));
         assert_matches!(res, Err(TypeError::BrokenNode(_)));
     }
 

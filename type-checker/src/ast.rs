@@ -11,7 +11,13 @@ pub struct Ident(Rc<String>);
 
 impl From<&str> for Ident {
     fn from(name: &str) -> Self {
-        Self(Rc::new(String::from(name)))
+        Self(Rc::new(name.into()))
+    }
+}
+
+impl From<&Rc<String>> for Ident {
+    fn from(rc: &Rc<String>) -> Self {
+        Self(Rc::clone(rc))
     }
 }
 
@@ -38,6 +44,71 @@ impl Into<cst::Node> for Broken {
 
 impl Pattern for Broken {
     const KIND: cst::NodeKind = cst::NodeKind::BROKEN;
+}
+
+pub struct Binder {
+    node: cst::Node,
+    pub name: Ident,
+}
+
+impl TryFrom<cst::Node> for Binder {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            Err(node)
+        } else if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::IDENT_EXPR,
+            value: name,
+        })] = &node.children[..]
+        {
+            Ok(Self {
+                name: Ident::from(name),
+                node,
+            })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for Binder {
+    const KIND: cst::NodeKind = cst::NodeKind::BINDER;
+}
+
+pub struct BinderAnnot {
+    node: cst::Node,
+    pub name: Ident,
+    pub typ: Type,
+}
+
+impl TryFrom<cst::Node> for BinderAnnot {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        if node.kind != Self::KIND {
+            Err(node)
+        } else if let [cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::IDENT_EXPR,
+            value: name,
+        }), cst::Child::Token(cst::Token {
+            kind: cst::TokenKind::PU_COLON,
+            ..
+        }), cst::Child::Type(typ)] = &node.children[..]
+        {
+            Ok(Self {
+                name: Ident::from(name),
+                typ: typ.clone(),
+                node,
+            })
+        } else {
+            Err(node)
+        }
+    }
+}
+
+impl Pattern for BinderAnnot {
+    const KIND: cst::NodeKind = cst::NodeKind::BINDER;
 }
 
 pub struct Var {
@@ -72,8 +143,7 @@ impl Pattern for Var {
 
 pub struct Abs {
     node: cst::Node,
-    pub binder: Ident,
-    pub typ: Type,
+    pub binder: BinderAnnot,
     pub body: cst::Node,
 }
 
@@ -87,26 +157,20 @@ impl TryFrom<cst::Node> for Abs {
         if let [cst::Child::Token(cst::Token {
             kind: cst::TokenKind::KW_LAM,
             ..
-        }), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::IDENT_EXPR,
-            value: binder,
-        }), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::PU_COLON,
-            ..
-        }), cst::Child::Type(typ), cst::Child::Token(cst::Token {
+        }), cst::Child::Node(binder), cst::Child::Token(cst::Token {
             kind: cst::TokenKind::PU_DOT,
             ..
         }), cst::Child::Node(body)] = &node.children[..]
         {
-            Ok(Abs {
-                binder: Ident(Rc::clone(binder)),
-                typ: typ.clone(),
-                body: body.clone(),
-                node,
-            })
-        } else {
-            Err(node)
+            if let Ok(binder) = BinderAnnot::try_from(binder.clone()) {
+                return Ok(Self {
+                    binder,
+                    body: body.clone(),
+                    node,
+                });
+            }
         }
+        Err(node)
     }
 }
 
@@ -145,7 +209,7 @@ impl Pattern for App {
 
 pub struct Let {
     node: cst::Node,
-    pub binder: Ident,
+    pub binder: Binder,
     pub bindee: cst::Node,
     pub body: cst::Node,
 }
@@ -160,10 +224,7 @@ impl TryFrom<cst::Node> for Let {
         if let [cst::Child::Token(cst::Token {
             kind: cst::TokenKind::KW_LET,
             ..
-        }), cst::Child::Token(cst::Token {
-            kind: cst::TokenKind::IDENT_EXPR,
-            value: binder,
-        }), cst::Child::Token(cst::Token {
+        }), cst::Child::Node(binder), cst::Child::Token(cst::Token {
             kind: cst::TokenKind::PU_EQ,
             ..
         }), cst::Child::Node(bindee), cst::Child::Token(cst::Token {
@@ -171,15 +232,16 @@ impl TryFrom<cst::Node> for Let {
             ..
         }), cst::Child::Node(body)] = &node.children[..]
         {
-            Ok(Let {
-                binder: Ident(Rc::clone(binder)),
-                bindee: bindee.clone(),
-                body: body.clone(),
-                node,
-            })
-        } else {
-            Err(node)
+            if let Ok(binder) = Binder::try_from(binder.clone()) {
+                return Ok(Let {
+                    binder,
+                    bindee: bindee.clone(),
+                    body: body.clone(),
+                    node,
+                })
+            }
         }
+        Err(node)
     }
 }
 
@@ -225,18 +287,33 @@ mod tests {
     }
 
     #[test]
+    fn binder_matches() {
+        assert!(Binder::try_from(binder("x")).is_ok());
+    }
+
+    #[test]
+    fn binder_annot_matches() {
+        assert!(BinderAnnot::try_from(binder_annot("x", tvar("T"))).is_ok());
+    }
+
+    #[test]
     fn var_matches() {
         assert!(Var::try_from(var("x")).is_ok());
     }
 
     #[test]
     fn abs_matches() {
-        assert!(Abs::try_from(abs("x", tvar("T"), var("E"))).is_ok());
+        assert!(Abs::try_from(abs(binder_annot("x", tvar("T")), var("E"))).is_ok());
     }
 
     #[test]
     fn app_matches() {
         assert!(App::try_from(app(var("F"), var("A"))).is_ok());
+    }
+
+    #[test]
+    fn let_matches() {
+        assert!(Let::try_from(let_(binder("x"), var("A"), var("B"))).is_ok());
     }
 
     #[test]
