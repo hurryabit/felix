@@ -1,6 +1,10 @@
 use std::rc::Rc;
 
-use crate::{cst, Type};
+use crate::{
+    cst,
+    tl::{self, AsOption},
+    Type,
+};
 
 pub trait Pattern: TryFrom<cst::Node, Error = cst::Node> {
     const KIND: cst::NodeKind;
@@ -46,12 +50,13 @@ impl Pattern for Broken {
     const KIND: cst::NodeKind = cst::NodeKind::BROKEN;
 }
 
-pub struct Binder {
+pub struct Binder<Ann: tl::Bool> {
     node: cst::Node,
     pub name: Ident,
+    pub typ: Ann::Option<Type>,
 }
 
-impl TryFrom<cst::Node> for Binder {
+impl TryFrom<cst::Node> for Binder<tl::False> {
     type Error = cst::Node;
 
     fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
@@ -64,6 +69,7 @@ impl TryFrom<cst::Node> for Binder {
         {
             Ok(Self {
                 name: Ident::from(name),
+                typ: tl::None(),
                 node,
             })
         } else {
@@ -72,17 +78,11 @@ impl TryFrom<cst::Node> for Binder {
     }
 }
 
-impl Pattern for Binder {
+impl Pattern for Binder<tl::False> {
     const KIND: cst::NodeKind = cst::NodeKind::BINDER;
 }
 
-pub struct BinderAnnot {
-    node: cst::Node,
-    pub name: Ident,
-    pub typ: Type,
-}
-
-impl TryFrom<cst::Node> for BinderAnnot {
+impl TryFrom<cst::Node> for Binder<tl::True> {
     type Error = cst::Node;
 
     fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
@@ -98,7 +98,7 @@ impl TryFrom<cst::Node> for BinderAnnot {
         {
             Ok(Self {
                 name: Ident::from(name),
-                typ: typ.clone(),
+                typ: tl::Some(typ.clone()),
                 node,
             })
         } else {
@@ -107,7 +107,33 @@ impl TryFrom<cst::Node> for BinderAnnot {
     }
 }
 
-impl Pattern for BinderAnnot {
+impl Pattern for Binder<tl::True> {
+    const KIND: cst::NodeKind = cst::NodeKind::BINDER;
+}
+
+impl TryFrom<cst::Node> for Binder<tl::Unknown> {
+    type Error = cst::Node;
+
+    fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
+        match Binder::<tl::False>::try_from(node) {
+            Ok(binder) => Ok(Self {
+                node: binder.node,
+                name: binder.name,
+                typ: binder.typ.as_option(),
+            }),
+            Err(node) => match Binder::<tl::True>::try_from(node) {
+                Ok(binder) => Ok(Self {
+                    node: binder.node,
+                    name: binder.name,
+                    typ: binder.typ.as_option(),
+                }),
+                Err(node) => Err(node),
+            },
+        }
+    }
+}
+
+impl Pattern for Binder<tl::Unknown> {
     const KIND: cst::NodeKind = cst::NodeKind::BINDER;
 }
 
@@ -141,13 +167,16 @@ impl Pattern for Var {
     const KIND: cst::NodeKind = cst::NodeKind::EXPR_VAR;
 }
 
-pub struct Abs {
+pub struct Abs<Ann: tl::Bool> {
     node: cst::Node,
-    pub binder: BinderAnnot,
+    pub binder: Binder<Ann>,
     pub body: cst::Node,
 }
 
-impl TryFrom<cst::Node> for Abs {
+impl<Ann: tl::Bool> TryFrom<cst::Node> for Abs<Ann>
+where
+    Binder<Ann>: TryFrom<cst::Node>,
+{
     type Error = cst::Node;
 
     fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
@@ -162,7 +191,7 @@ impl TryFrom<cst::Node> for Abs {
             ..
         }), cst::Child::Node(body)] = &node.children[..]
         {
-            if let Ok(binder) = BinderAnnot::try_from(binder.clone()) {
+            if let Ok(binder) = Binder::try_from(binder.clone()) {
                 return Ok(Self {
                     binder,
                     body: body.clone(),
@@ -174,7 +203,10 @@ impl TryFrom<cst::Node> for Abs {
     }
 }
 
-impl Pattern for Abs {
+impl<Ann: tl::Bool> Pattern for Abs<Ann>
+where
+    Binder<Ann>: TryFrom<cst::Node>,
+{
     const KIND: cst::NodeKind = cst::NodeKind::EXPR_ABS;
 }
 
@@ -207,14 +239,17 @@ impl Pattern for App {
     const KIND: cst::NodeKind = cst::NodeKind::EXPR_APP;
 }
 
-pub struct Let {
+pub struct Let<Ann: tl::Bool> {
     node: cst::Node,
-    pub binder: Binder,
+    pub binder: Binder<Ann>,
     pub bindee: cst::Node,
     pub body: cst::Node,
 }
 
-impl TryFrom<cst::Node> for Let {
+impl<Ann: tl::Bool> TryFrom<cst::Node> for Let<Ann>
+where
+    Binder<Ann>: TryFrom<cst::Node>,
+{
     type Error = cst::Node;
 
     fn try_from(node: cst::Node) -> std::result::Result<Self, Self::Error> {
@@ -238,14 +273,17 @@ impl TryFrom<cst::Node> for Let {
                     bindee: bindee.clone(),
                     body: body.clone(),
                     node,
-                })
+                });
             }
         }
         Err(node)
     }
 }
 
-impl Pattern for Let {
+impl<Ann: tl::Bool> Pattern for Let<Ann>
+where
+    Binder<Ann>: TryFrom<cst::Node>,
+{
     const KIND: cst::NodeKind = cst::NodeKind::EXPR_LET;
 }
 
@@ -287,13 +325,32 @@ mod tests {
     }
 
     #[test]
-    fn binder_matches() {
-        assert!(Binder::try_from(binder("x")).is_ok());
+    fn binder_unannot_matches_false() {
+        assert!(Binder::<tl::False>::try_from(binder("x")).is_ok());
     }
 
     #[test]
-    fn binder_annot_matches() {
-        assert!(BinderAnnot::try_from(binder_annot("x", tvar("T"))).is_ok());
+    fn binder_annot_not_matches_false() {
+        assert!(Binder::<tl::False>::try_from(binder_annot("x", tvar("T"))).is_err());
+    }
+
+    #[test]
+    fn binder_unannot_not_matches_true() {
+        assert!(Binder::<tl::True>::try_from(binder("x")).is_err());
+    }
+
+    #[test]
+    fn binder_annot_matches_true() {
+        assert!(Binder::<tl::True>::try_from(binder_annot("x", tvar("T"))).is_ok());
+    }
+
+    fn binder_unannot_matches_unknown() {
+        assert!(Binder::<tl::Unknown>::try_from(binder("x")).is_ok());
+    }
+
+    #[test]
+    fn binder_annot_matches_unknown() {
+        assert!(Binder::<tl::Unknown>::try_from(binder_annot("x", tvar("T"))).is_ok());
     }
 
     #[test]
@@ -302,8 +359,13 @@ mod tests {
     }
 
     #[test]
-    fn abs_matches() {
-        assert!(Abs::try_from(abs(binder_annot("x", tvar("T")), var("E"))).is_ok());
+    fn abs_annot_matches() {
+        assert!(Abs::<tl::True>::try_from(abs(binder_annot("x", tvar("T")), var("E"))).is_ok());
+    }
+
+    #[test]
+    fn abs_unannot_matches() {
+        assert!(Abs::<tl::False>::try_from(abs(binder("x"), var("E"))).is_ok());
     }
 
     #[test]
@@ -312,8 +374,16 @@ mod tests {
     }
 
     #[test]
-    fn let_matches() {
-        assert!(Let::try_from(let_(binder("x"), var("A"), var("B"))).is_ok());
+    fn let_unannot_matches() {
+        assert!(Let::<tl::False>::try_from(let_(binder("x"), var("A"), var("B"))).is_ok());
+    }
+
+    #[test]
+    fn let_annot_matches() {
+        assert!(
+            Let::<tl::True>::try_from(let_(binder_annot("x", tvar("T")), var("A"), var("B")))
+                .is_ok()
+        );
     }
 
     #[test]

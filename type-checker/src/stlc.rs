@@ -11,10 +11,11 @@ fn t_var(checker: &dyn Checker, ctx: &Context, var: Var) -> Result<Type> {
     checker.lookup(ctx, &var.name)
 }
 
-fn t_abs(checker: &dyn Checker, ctx: &Context, abs: Abs) -> Result<Type> {
-    let ctx = ctx.extend(abs.binder.name, abs.binder.typ.clone());
+fn t_abs(checker: &dyn Checker, ctx: &Context, abs: Abs<tl::True>) -> Result<Type> {
+    let t_binder = abs.binder.typ.unwrap();
+    let ctx = ctx.extend(abs.binder.name, t_binder.clone());
     let t_res = checker.infer(&ctx, abs.body)?;
-    Ok(typ::arrow(abs.binder.typ, t_res))
+    Ok(typ::arrow(t_binder, t_res))
 }
 
 fn t_app(checker: &dyn Checker, ctx: &Context, app: App) -> Result<Type> {
@@ -25,7 +26,7 @@ fn t_app(checker: &dyn Checker, ctx: &Context, app: App) -> Result<Type> {
     Ok(t_res)
 }
 
-fn t_let(checker: &dyn Checker, ctx: &Context, let_: Let) -> Result<Type> {
+fn t_let(checker: &dyn Checker, ctx: &Context, let_: Let<tl::False>) -> Result<Type> {
     let t1 = checker.infer(ctx, let_.bindee)?;
     let ctx1 = ctx.extend(let_.binder.name, t1);
     checker.infer(&ctx1, let_.body)
@@ -108,6 +109,12 @@ mod tests {
     }
 
     #[test]
+    fn t_abs_no_annot() {
+        let res = stlc::make().infer(&Context::new(), abs(binder("x"), broken()));
+        assert_matches!(res, Err(TypeError::NoInferRule(_)));
+    }
+
+    #[test]
     fn t_app_ok() {
         let ctx = Context::new()
             .extend(Ident::from("F"), tvar("S") >> tvar("T"))
@@ -183,6 +190,13 @@ mod tests {
         let ctx = Context::new().extend(Ident::from("A"), tvar("S"));
         let res = stlc::make().infer(&ctx, let_(binder("x"), var("A"), broken()));
         assert_matches!(res, Err(TypeError::BrokenNode(_)));
+    }
+
+    #[test]
+    fn t_let_annot() {
+        let ctx = Context::new();
+        let res = stlc::make().infer(&ctx, let_(binder_annot("x", tvar("T")), var("A"), var("B")));
+        assert_matches!(res, Err(TypeError::NoInferRule(_)));
     }
 
     #[test]
