@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::{Type, ast::{Ident, Pattern}, cst};
+use crate::{
+    ast::{Ident, Pattern},
+    cst, Type,
+};
 
 enum ContextData {
     Empty,
@@ -68,11 +71,9 @@ struct InferRule {
     name: &'static str,
     kind: cst::NodeKind,
     rule: Box<
-        dyn for<'a> Fn(
-            &dyn Checker,
-            &Context,
-            cst::Node,
-        ) -> std::result::Result<Result<Type>, cst::Node>,
+        dyn Fn(&dyn Checker, &Context, cst::Node) -> std::result::Result<Result<Type>, cst::Node>
+            + Send
+            + Sync,
     >,
 }
 
@@ -94,12 +95,14 @@ impl InferRule {
 }
 
 pub struct TypeSystem {
+    pub name: String,
     infer_rules: Vec<InferRule>,
 }
 
 impl TypeSystem {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Self {
+            name,
             infer_rules: Vec::new(),
         }
     }

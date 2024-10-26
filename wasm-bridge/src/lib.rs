@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use felix_common::Problem;
 use felix_parser::Parser;
+use felix_type_checker;
 
 pub mod syntax;
 
@@ -39,4 +40,9 @@ pub fn parse(input: &str, options: ParseOptions) -> ParseResult {
         problems: result.problems,
         syntax,
     }
+}
+
+#[wasm_bindgen]
+pub fn type_system_name() -> String {
+    felix_type_checker::stlc::get().name.clone()
 }

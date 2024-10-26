@@ -2,7 +2,7 @@
 mod ast;
 mod checker;
 mod cst;
-mod stlc;
+pub mod stlc;
 mod typ;
 
 pub use checker::{Checker, Context, Result, TypeError, TypeSystem};

@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 
+import { useEffect } from "react";
 import {
     IconBrandGithubFilled,
     IconMaximize,
@@ -8,11 +9,18 @@ import {
 } from "@tabler/icons-react";
 import { ActionIcon, AppShell, Center, Group, MantineProvider, rem, Text } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
+
+import * as wasm from "felix-wasm-bridge";
+
 import Main from "./Main/Main";
 import { theme, vars } from "./theme";
 
 export default function App() {
     const { fullscreen, toggle: toggleFullscreen } = useFullscreen();
+
+    useEffect(function() {
+        console.log(`One day, we'll type check using the ${wasm.type_system_name()}.`);
+    }, []);
 
     return (
         <MantineProvider theme={theme}>

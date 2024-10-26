@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use crate::*;
 use ast::*;
 
@@ -33,8 +35,8 @@ fn t_unit(checker: &dyn Checker, ctx: &Context, _unit: Unit) -> Result<Type> {
     Ok(typ::UNIT)
 }
 
-pub fn make() -> TypeSystem {
-    let mut ts = TypeSystem::new();
+fn make() -> TypeSystem {
+    let mut ts = TypeSystem::new(String::from("Simply Typed Lambda Calculus"));
     ts.add_infer_rule("T-Broken", t_broken);
     ts.add_infer_rule("T-Var", t_var);
     ts.add_infer_rule("T-Abs", t_abs);
@@ -42,6 +44,12 @@ pub fn make() -> TypeSystem {
     ts.add_infer_rule("T-Let", t_let);
     ts.add_infer_rule("T-Unit", t_unit);
     ts
+}
+
+static INSTANCE: LazyLock<TypeSystem> = LazyLock::new(make);
+
+pub fn get() -> &'static TypeSystem {
+    &INSTANCE
 }
 
 #[cfg(test)]

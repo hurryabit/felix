@@ -16,6 +16,7 @@ crate-type = ["cdylib", "rlib"]
 console_error_panic_hook = "0.1.7"
 felix-common = { path = "../common" }
 felix-parser = { path = "../parser" }
+felix-type-checker = { path = "../type-checker" }
 serde.workspace = true
 tsify-next.workspace = true
 wasm-bindgen.workspace = true
