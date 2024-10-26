@@ -125,6 +125,7 @@ impl Checker for TypeSystem {
         }
     }
 
+    #[allow(unused_variables)]
     fn check(&self, ctx: &Context, node: cst::Node, typ: Type) -> Result<()> {
         todo!()
     }

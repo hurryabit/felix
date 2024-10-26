@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use crate::*;
 use ast::*;
 
-fn t_broken(checker: &dyn Checker, ctx: &Context, broken: Broken) -> Result<Type> {
+fn t_broken(_checker: &dyn Checker, _ctx: &Context, broken: Broken) -> Result<Type> {
     Err(TypeError::BrokenNode(broken.into()))
 }
 
@@ -31,7 +31,7 @@ fn t_let(checker: &dyn Checker, ctx: &Context, let_: Let) -> Result<Type> {
     checker.infer(&ctx1, let_.body)
 }
 
-fn t_unit(checker: &dyn Checker, ctx: &Context, _unit: Unit) -> Result<Type> {
+fn t_unit(_checker: &dyn Checker, _ctx: &Context, _unit: Unit) -> Result<Type> {
     Ok(typ::UNIT)
 }
 
