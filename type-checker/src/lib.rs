@@ -1,9 +1,7 @@
 #![allow(dead_code)]
-mod ast;
 mod checker;
-mod cst;
+mod ast;
 pub mod stlc;
-mod tl;
 mod typ;
 
 pub use checker::{Checker, Context, Result, TypeError, TypeSystem};

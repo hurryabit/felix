@@ -1,8 +1,8 @@
-use std::rc::Rc;
+use std::{borrow::Borrow, rc::Rc};
 
 use crate::{
-    ast::{Ident, Pattern},
-    cst, Type,
+    ast::{self, Expr, FromExpr, Ident},
+    Type,
 };
 
 enum ContextData {
@@ -50,9 +50,9 @@ impl Context {
 
 #[derive(Debug)]
 pub enum TypeError {
-    BrokenNode(cst::Node),
+    BrokenNode(Rc<ast::Broken>),
     UnknownEVar(Ident),
-    NoInferRule(cst::Node),
+    NoInferRule(Expr),
     ExpectedArrow { found: Type },
     TypeMismatch { found: Type, expected: Type },
 }
@@ -61,33 +61,31 @@ pub type Result<T> = std::result::Result<T, TypeError>;
 
 pub trait Checker {
     fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type>;
-    fn check(&self, ctx: &Context, node: cst::Node, typ: Type) -> Result<()>;
-    fn infer(&self, ctx: &Context, node: cst::Node) -> Result<Type>;
+    fn check(&self, ctx: &Context, expr: &Expr, typ: Type) -> Result<()>;
+    fn infer(&self, ctx: &Context, expr: &Expr) -> Result<Type>;
     fn equal(&self, found: &Type, expected: &Type) -> Result<()>;
     fn decompose_arrow(&self, typ: &Type) -> Result<(Type, Type)>;
 }
 
 struct InferRule {
     name: &'static str,
-    kind: cst::NodeKind,
     rule: Box<
-        dyn Fn(&dyn Checker, &Context, cst::Node) -> std::result::Result<Result<Type>, cst::Node>
+        dyn Fn(&dyn Checker, &Context, &Expr) -> Option<Result<Type>>
             + Send
             + Sync,
     >,
 }
 
 impl InferRule {
-    fn new<P: Pattern + 'static>(
+    fn new<T: FromExpr + 'static>(
         name: &'static str,
-        rule: fn(&dyn Checker, &Context, P) -> Result<Type>,
+        rule: fn(&dyn Checker, &Context, &Rc<T>) -> Result<Type>,
     ) -> Self {
         Self {
             name,
-            kind: P::KIND,
             rule: Box::new(
-                move |checker: &dyn Checker, ctx: &Context, node: cst::Node| {
-                    node.try_into().map(|pattern| rule(checker, ctx, pattern))
+                move |checker: &dyn Checker, ctx: &Context, expr: &Expr| {
+                    T::from_expr(expr).map(|pattern| rule(checker, ctx, pattern.borrow()))
                 },
             ),
         }
@@ -107,12 +105,12 @@ impl TypeSystem {
         }
     }
 
-    pub fn add_infer_rule<P: Pattern + 'static>(
+    pub fn add_infer_rule<T: FromExpr + 'static>(
         &mut self,
         name: &'static str,
-        rule: fn(&dyn Checker, &Context, P) -> Result<Type>,
+        rule: fn(&dyn Checker, &Context, &Rc<T>) -> Result<Type>,
     ) {
-        self.infer_rules.push(InferRule::new::<P>(name, rule))
+        self.infer_rules.push(InferRule::new::<T>(name, rule))
     }
 }
 
@@ -126,18 +124,17 @@ impl Checker for TypeSystem {
     }
 
     #[allow(unused_variables)]
-    fn check(&self, ctx: &Context, node: cst::Node, typ: Type) -> Result<()> {
+    fn check(&self, ctx: &Context, expr: &Expr, typ: Type) -> Result<()> {
         todo!()
     }
 
-    fn infer(&self, ctx: &Context, mut node: cst::Node) -> Result<Type> {
+    fn infer(&self, ctx: &Context, expr: &Expr) -> Result<Type> {
         for rule in &self.infer_rules {
-            match (rule.rule)(self, ctx, node) {
-                Err(node1) => node = node1,
-                Ok(res) => return res,
+            if let Some(res) = (rule.rule)(self, ctx, expr) {
+                return res;
             }
         }
-        Err(TypeError::NoInferRule(node))
+        Err(TypeError::NoInferRule(expr.clone()))
     }
 
     fn equal(&self, found: &Type, expected: &Type) -> Result<()> {
