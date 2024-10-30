@@ -1,5 +1,4 @@
-use derive_more::{From, TryInto};
-use std::rc::Rc;
+use std::{any::Any, rc::Rc};
 use trait_gen::trait_gen;
 
 use crate::Type;
@@ -13,15 +12,11 @@ pub struct Binder {
     pub annot: Option<Type>,
 }
 
-#[derive(Clone, Debug, From, TryInto)]
-#[try_into(ref)]
-pub enum Expr {
-    Broken(Rc<Broken>),
-    Var(Rc<Var>),
-    Abs(Rc<Abs>),
-    App(Rc<App>),
-    Let(Rc<Let>),
-    Unit(Rc<Unit>),
+#[derive(Clone, Debug)]
+pub struct Expr(Rc<dyn Any>);
+
+trait ExprNode: 'static {
+    fn sub_exprs(&self) -> Vec<&Expr>;
 }
 
 #[derive(Clone, Debug)]
@@ -62,8 +57,8 @@ pub trait FromExpr: Sized {
 impl FromExpr for T {
     #[inline]
     fn from_expr(expr: &Expr) -> Option<Rc<Self>> {
-        match <&Expr as TryInto<&Rc<T>>>::try_into(&expr) {
-            Ok(x) => Some(Rc::clone(x)),
+        match expr.clone().0.downcast() {
+            Ok(x) => Some(x),
             Err(_) => None,
         }
     }
@@ -123,24 +118,24 @@ pub fn binder_annot(name: &str, typ: Type) -> Binder {
 }
 
 pub fn broken() -> Expr {
-    Expr::Broken(Rc::new(Broken))
+    Expr(Rc::new(Broken))
 }
 
 pub fn var(name: &str) -> Expr {
     let name = ident(name);
-    Expr::Var(Rc::new(Var { name }))
+    Expr(Rc::new(Var { name }))
 }
 
 pub fn abs(binder: Binder, body: Expr) -> Expr {
-    Expr::Abs(Rc::new(Abs { binder, body }))
+    Expr(Rc::new(Abs { binder, body }))
 }
 
 pub fn app(fun: Expr, arg: Expr) -> Expr {
-    Expr::App(Rc::new(App { fun, arg }))
+    Expr(Rc::new(App { fun, arg }))
 }
 
 pub fn let_(binder: Binder, bindee: Expr, body: Expr) -> Expr {
-    Expr::Let(Rc::new(Let {
+    Expr(Rc::new(Let {
         binder,
         bindee,
         body,
@@ -148,7 +143,7 @@ pub fn let_(binder: Binder, bindee: Expr, body: Expr) -> Expr {
 }
 
 pub fn unit() -> Expr {
-    Expr::Unit(Rc::new(Unit))
+    Expr(Rc::new(Unit))
 }
 
 #[cfg(test)]
