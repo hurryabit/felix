@@ -9,7 +9,7 @@ pub enum Severity {
     ERROR,
 }
 
-#[derive(Clone, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
 pub struct Problem {
     pub start: SrcLoc,

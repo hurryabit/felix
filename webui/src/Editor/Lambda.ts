@@ -9,11 +9,11 @@ export class LambdaHighlightRules extends window.ace.acequire("ace/mode/text_hig
 
         const keywordMapper = this.createKeywordMapper(
             {
-                "support.constant": "true|false",
-                keyword: "and|else|fun|if|in|let|rec|then|type",
+                "support.constant": "unit",
+                keyword: "in|let",
                 "keyword.long": "forall|Lam|lam|mu",
-                "support.type": "Bool|Bot|Int|Top|Unit",
-                "support.function": "foo",
+                "support.type": "Unit",
+                // "support.function": "",
                 // "variable.language": "this",
             },
             "identifier",
@@ -23,12 +23,7 @@ export class LambdaHighlightRules extends window.ace.acequire("ace/mode/text_hig
             start: [
                 {
                     token: "comment",
-                    regex: /\(\*.*?\*\)\s*?$/,
-                },
-                {
-                    token: "comment",
-                    regex: /\(\*.*/,
-                    next: "comment",
+                    regex: /#.*$/,
                 },
                 {
                     token: "constant.numeric", // integer
@@ -44,9 +39,8 @@ export class LambdaHighlightRules extends window.ace.acequire("ace/mode/text_hig
                 },
                 {
                     token: "keyword.operator",
-                    // NOTE(MH): We need negative lookahead on the minus to
-                    // colour -> as punctuation and not as a keyword.
-                    regex: /&&|\/(?!\\)|==|[!><]=?|-(?!>)|%|\|\||\+|\*/,
+                    // NOTE(MH): Negative lookahead `(?!RE)` might be useful.
+                    regex: /->/,
                 },
                 {
                     token: "keyword.operator.long",
@@ -54,15 +48,15 @@ export class LambdaHighlightRules extends window.ace.acequire("ace/mode/text_hig
                 },
                 {
                     token: "keyword.operator.short",
-                    regex: /¬|∩|∪/,
+                    regex: /¬|∧|∨/,
                 },
                 {
                     token: "punctuation.operator",
-                    regex: /->|:|,|=/,
+                    regex: /:|\.|=/,
                 },
                 {
                     token: "paren.lparen",
-                    regex: /[()]/,
+                    regex: /[(]/,
                 },
                 {
                     token: "paren.rparen",
@@ -71,16 +65,6 @@ export class LambdaHighlightRules extends window.ace.acequire("ace/mode/text_hig
                 {
                     token: "text",
                     regex: /\s+/,
-                },
-            ],
-            comment: [
-                {
-                    token: "comment", // closing comment
-                    regex: /\*\)/,
-                    next: "start",
-                },
-                {
-                    defaultToken: "comment",
                 },
             ],
         };

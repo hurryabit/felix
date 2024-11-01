@@ -16,6 +16,12 @@ pub struct SrcLoc {
     pub column: u32,
 }
 
+impl SrcLoc {
+    pub fn new(line: u32, column: u32) -> Self {
+        Self { line, column }
+    }
+}
+
 /// Mapper between byte indices into the source buffer and source locations
 /// in the form of line/column pairs.
 #[derive(Debug, Eq, PartialEq)]

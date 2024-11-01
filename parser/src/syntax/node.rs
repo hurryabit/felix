@@ -1,50 +1,29 @@
+use enumset::enum_set;
 use strum::VariantArray;
 
 #[allow(non_camel_case_types)]
-#[derive(
-    Debug, Hash, PartialOrd, Ord, enumset::EnumSetType, strum::Display, VariantArray,
-)]
+#[derive(Debug, Hash, PartialOrd, Ord, enumset::EnumSetType, strum::Display, VariantArray)]
 #[repr(u16)]
 #[enumset(repr = "u64")]
 pub enum NodeKind {
     PROGRAM,
 
-    DEFN_TYPE,
-    DEFN_TYPE_REC,
-    BIND_TYPE,
-
-    TYPE_INFIX,
-    TYPE_PREFIX,
-    TYPE_BUILTIN,
-    TYPE_REF,
-    TYPE_PAREN,
-
-    OP_TYPE_INFIX,
-    OP_TYPE_PREFIX,
-
-    DEFN_LET,
-    DEFN_LET_REC,
-    BIND_EXPR,
-
-    PAT_IDENT,
-    PAT_UNIT,
-    PAT_PAIR,
-
-    EXPR_INFIX,
-    EXPR_PREFIX,
+    EXPR_ABS,
     EXPR_APP,
-    EXPR_LIT,
-    EXPR_REF,
-    EXPR_UNIT,
-    EXPR_PAIR,
-    EXPR_FUN,
     EXPR_LET,
-    EXPR_LET_REC,
-    EXPR_IF,
     EXPR_PAREN,
+    EXPR_VAR,
+    EXPR_UNIT,
+    EXPR_META, // Placeholder for expressions in generated syntax.
 
-    OP_EXPR_INFIX,
-    OP_EXPR_PREFIX,
+    BINDER,
+    NAME,
+
+    TYPE_ARROW,
+    TYPE_PAREN,
+    TYPE_VAR,
+    TYPE_UNIT,
+    TYPE_META, // Placeholder for types in generated syntax.
 
     ERROR,
 }
@@ -53,40 +32,17 @@ pub type NodeKindSet = enumset::EnumSet<NodeKind>;
 
 pub type Node = rowan::SyntaxNode<super::lang::FelixLang>;
 
-#[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
-#[derive(
-    Debug,
-    Hash,
-    PartialOrd,
-    Ord,
-    enumset::EnumSetType,
-    logos::Logos,
-    strum::Display,
-    strum::EnumCount,
-    strum::EnumIter,
-    strum::FromRepr,
-)]
-#[repr(u16)]
-#[enumset(repr = "u64")]
-pub(crate) enum AliasKind {
-    DEFN,
-    TYPE,
-    LEVEL_TYPE_INFIX,
-    LEVEL_TYPE_PREFIX,
-    LEVEL_TYPE_ATOM,
-    PAT,
-    EXPR,
-    LEVEL_EXPR_INFIX,
-    LEVEL_EXPR_PREFIX,
-    LEVEL_EXPR_APP,
-    LEVEL_EXPR_ATOM,
-}
-
-pub(crate) type AliasKindSet = enumset::EnumSet<AliasKind>;
-
 impl NodeKind {
     pub const LAST: Self = Self::VARIANTS[Self::VARIANTS.len() - 1];
+
+    pub const EXPR: NodeKindSet =
+        enum_set!(Self::EXPR_ABS | Self::EXPR_APP | Self::EXPR_LET | Self::EXPR_ATOM | Self::EXPR_META);
+    pub const EXPR_ATOM: NodeKindSet =
+        enum_set!(Self::EXPR_PAREN | Self::EXPR_VAR | Self::EXPR_UNIT);
+
+    pub const TYPE: NodeKindSet = enum_set!(Self::TYPE_ARROW | Self::TYPE_ATOM | Self::TYPE_META);
+    pub const TYPE_ATOM: NodeKindSet =
+        enum_set!(Self::TYPE_PAREN | Self::TYPE_VAR | Self::TYPE_UNIT);
 }
 
 impl From<NodeKind> for u16 {
@@ -100,7 +56,7 @@ impl TryFrom<u16> for NodeKind {
 
     fn try_from(repr: u16) -> Result<Self, Self::Error> {
         if repr <= Self::LAST as u16 {
-            Ok(unsafe { std::mem::transmute(repr) })
+            Ok(unsafe { std::mem::transmute::<u16, Self>(repr) })
         } else {
             Err(repr)
         }
@@ -138,5 +94,25 @@ mod tests {
     #[test]
     fn try_from_past_last_fails() {
         assert_matches!(NodeKind::try_from(NodeKind::LAST as u16 + 1), Err(_));
+    }
+
+    #[test]
+    fn expr_set_correct() {
+        for node in NodeKind::VARIANTS {
+            assert_eq!(
+                node.to_string().starts_with("EXPR"),
+                NodeKind::EXPR.contains(*node)
+            );
+        }
+    }
+
+    #[test]
+    fn type_set_correct() {
+        for node in NodeKind::VARIANTS {
+            assert_eq!(
+                node.to_string().starts_with("TYPE"),
+                NodeKind::TYPE.contains(*node)
+            );
+        }
     }
 }

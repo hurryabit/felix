@@ -8,22 +8,11 @@ import Problems from "../Problems/Problems";
 import SyntaxTree from "../SyntaxTree/SyntaxTree";
 import * as classes from "./Main.css";
 
-const SAMPLE_PROGRAM = `(* Slow recursive version of Fibonacci. *)
-let rec fib_slow = fun n ->
-    if n <= 1 then
-        0
-    else
-        fib (n-1) + fib (n-2)
-
-(* Faster tail-recursive version of Fibonacci. *)
-let fib_faster = fun n ->
-    let rec go = fun (n, (a, b)) ->
-        if n == 0 then
-            a
-        else
-            go (n-1, (b, a+b))
-    in
-    go (n, (0, 1))
+const SAMPLE_PROGRAM = `# Simple higher order function
+let twice =
+    λf:Unit -> Unit. λu:Unit. f (f u)
+in
+twice (λu:Unit. u) unit
 `;
 
 export default function Main() {

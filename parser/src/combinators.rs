@@ -2,6 +2,7 @@ use crate::parser::{Parser, Result};
 use crate::syntax::{NodeKind, TokenKind, TokenKindSet};
 
 impl<'a> Parser<'a> {
+    #[allow(dead_code)]
     pub(crate) fn infix(
         &mut self,
         operation_node: NodeKind,
@@ -66,6 +67,7 @@ impl<'a> Parser<'a> {
         res
     }
 
+    #[allow(dead_code)]
     pub(crate) fn prefix(
         &mut self,
         operation_node: NodeKind,

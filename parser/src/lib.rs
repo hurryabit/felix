@@ -1,3 +1,4 @@
+mod ast;
 mod first;
 mod parser;
 mod combinators;

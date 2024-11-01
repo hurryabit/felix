@@ -11,118 +11,58 @@ This is a context free grammar represented in EBNF (i.e. `{X}`/`[X]` make `X`
 repeatable/optional). The start symbol is `PROGRAM`. Some productions, like
 `LPAREN = "("`, are only included to record that we use `LPAREN` as token name
 for the terminal `"("`. In productions of the form
-`IDENT = r"[A-Za-z_][A-Za-z0-9_]*"`, the RHS is a regular expression.
-Non-terminals prefixed with an `@` are "inlined" during parsing and not present
-in the resulting CST.
+`ID_EXPR = r"_*[a-z][A-Za-z0-9_]*"`, the RHS is a regular expression. Alternatives enclosed in `<...>` produce nodes in the CST, named like the LHS of the production. Alternatives not encloded in `<...>` don't produce nodes in the CST.
 
 ```fsharp
-PROGRAM = {DEFN}
-@DEFN = DEFN_TYPE | DEFN_TYPE_REC | DEFN_LET | DEFN_LET_REC
+PROGRAM = <EXPR>
 
-DEFN_TYPE = "type" BIND_TYPE
-DEFN_TYPE_REC = "type" "rec" BIND_TYPE {"and" BIND_TYPE}
+EXPR = EXPR_ABS | EXPR_APP | EXPR_LET
+EXPR_ABS = <"λ" BINDER "." EXPR>
+EXPR_APP = <EXPR_APP EXPR_ATOM> | EXPR_ATOM
+EXPR_LET = <"let" BINDER "=" EXPR "in" EXPR>
+EXPR_ATOM = EXPR_PAREN | EXPR_VAR | EXPR_UNIT
+EXPR_PAREN = <"(" EXPR ")">
+EXPR_VAR = <ID_EXPR>
+EXPR_UNIT = <"unit">
 
-BIND_TYPE = IDENT "=" @TYPE
+TYPE = TYPE_ARROW
+TYPE_ARROW = <TYPE_ATOM "->" TYPE_ARROW> | TYPE_ATOM
+TYPE_ATOM = TYPE_PAREN | TYPE_VAR | TYPE_UNIT
+TYPE_PAREN = <"(" TYPE ")">
+TYPE_VAR = <ID_TYPE>
+TYPE_UNIT = <"Unit">
 
-(* Precendence/associativity of infix operators is given in table below. *)
-@TYPE = @LEVEL_TYPE_INFIX
-@LEVEL_TYPE_INFIX = @LEVEL_TYPE_PREFIX | TYPE_INFIX
-TYPE_INFIX = @LEVEL_TYPE_INFIX OP_TYPE_INFIX @LEVEL_TYPE_INFIX
-@LEVEL_TYPE_PREFIX = @LEVEL_TYPE_ATOM | TYPE_PREFIX
-TYPE_PREFIX = OP_TYPE_PREFIX @LEVEL_TYPE_PREFIX
-@LEVEL_TYPE_ATOM =  TYPE_BUILTIN | TYPE_REF | TYPE_PAREN
-TYPE_BUILTIN = "Bot" | "Top" | "Bool" | "Int" | "Unit"
-TYPE_REF = IDENT
-TYPE_PAREN = "(" @TYPE ")"
+BINDER = <NAME [":" TYPE]>
+NAME = <ID_EXPR>
 
-OP_TYPE_INFIX = "->" | "\/" | "/\ " | "*"
-OP_TYPE_PREFX = "~"
-
-DEFN_LET = "let" BIND_EXPR
-DEFN_LET_REC = "let" "rec" BIND_EXPR {"and" BIND_EXPR}
-
-BIND_EXPR = @PAT [":" @TYPE] "=" @EXPR
-
-@PAT = PAT_IDENT | PAT_UNIT | PAT_PAIR
-PAT_IDENT = IDENT
-PAT_UNIT = "(" ")"
-PAT_PAIR = "(" @PAT "," @PAT ")"
-
-(* Precendence/associativity of infix operators is given in table below. *)
-@EXPR = @LEVEL_EXPR_INFIX | EXPR_FUN | EXPR_LET | EXPR_LET_REC | EXPR_IF
-EXPR_FUN = "fun" @PAT "->" @EXPR
-EXPR_LET = "let" BIND_EXPR "in" @EXPR
-EXPR_LET_REC = "let" "rec" BIND_EXPR {"and" BIND_EXPR} "in" @EXPR
-EXPR_IF = "if" @EXPR "then" @EXPR "else" @EXPR
-@LEVEL_EXPR_INFIX = @LEVEL_EXPR_PREFIX | EXPR_INFIX
-EXPR_INFIX = @LEVEL_EXPR_INFIX OP_EXPR_INFIX @LEVEL_EXPR_INFIX
-@LEVEL_EXPR_PREFIX = @LEVEL_POSTFIX | EXPR_PREFIX
-EXPR_PREFIX = OP_EXPR_PREFIX @LEVEL_EXPR_PREFIX
-@LEVEL_EXPR_APP = @LEVEL_EXPR_ATOM | EXPR_APP
-EXPR_APP = @LEVEL_EXPR_APP @LEVEL_EXPR_ATOM
-@LEVEL_EXPR_ATOM = EXPR_LIT | EXPR_REF | EXPR_UNIT | EXPR_PAIR | EXPR_PAREN
-EXPR_LIT = LIT_NAT | @LIT_BOOL
-EXPR_REF = IDENT
-EXPR_UNIT = "(" ")"
-EXPR_PAIR = "(" @EXPR "," @EXPR ")"
-EXPR_PAREN = "(" @EXPR ")"
-
-OP_EXPR_INFIX = "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "&&" | "||"
-OP_EXPR_PREFIX = "!"
-
-IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
-
-@LIT_BOOL = "false" | "true"
-LIT_NAT = r"0|[1-9][0-9]*"
-
+(* The following rules are tokens defined by regular expressions: *)
+ID_EXPR = r"_*[a-z][A-Za-z0-9_]*"
+ID_TYPE = r"_*[A-Z][A-Za-z0-9_]*"
 
 (* The following rules are only here to record token names: *)
 
 (* Keywords: *)
-KW_AND = "and"
-KW_ELSE = "else"
-KW_FALSE = "false"
-KW_FUN = "fun"
-KW_IF = "if"
+KW_IN = "in"
 KW_LET = "let"
-KW_REC = "rec"
-KW_THEN = "then"
-KW_TRUE = "true"
-KW_TYPE = "type"
+KW_UNIT = "unit"
+
+(* Greek letters: *)
+GR_LAMBDA_LOWER = "λ"
 
 (* Builtin types *)
-TY_BOOL = "Bool"
-TY_BOT = "Bot" (* The empty type. *)
-TY_INT = "Int"
-TY_TOP = "Top" (* The universal type. *)
 TY_UNIT = "Unit"
 
 (* Delimiters *)
 RPAREN = ")"
 LPAREN = "("
 
-(* Operators & separators *)
-AND = "&&"
-ARROW = "->"
+(* Operators: *)
+OP_ARROW = "->"
+
+(* Separators: *)
 COLON = ":"
-COMMA = ","
-COMPL = "~"
-DIV = "/"
-EQ = "="
-EQ_EQ = "=="
-GT = ">"
-GT_EQ = ">="
-INTER = "/\ "
-LT = "<"
-LT_EQ = "<="
-MINUS = "-"
-MOD = "%"
-NOT = "!"
-NOT_EQ = "!="
-OR = "||"
-PLUS = "+"
-TIMES = "*"
-UNION = "\/"
+DOT = "."
+EQUALS = "="
 ```
 
 ### Operator precedence and associativity

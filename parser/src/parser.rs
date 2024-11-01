@@ -20,6 +20,7 @@ pub struct Parser<'a> {
         Box<dyn Iterator<Item = (std::result::Result<TokenKind, ()>, std::ops::Range<usize>)> + 'a>,
     peeked: Option<(TokenKind, SrcSpan<u32>)>,
     trivia: Vec<(TokenKind, SrcSpan<u32>)>,
+    preserve_trivia: bool,
     open_node_stack: Vec<NodeKind>,
     builder: rowan::GreenNodeBuilder<'a>,
     problems: Vec<Problem>,
@@ -43,10 +44,16 @@ impl<'a> Parser<'a> {
             lexer: Box::new(TokenKind::lexer(input).spanned()),
             peeked: None,
             trivia: Vec::new(),
+            preserve_trivia: true,
             open_node_stack: Vec::new(),
             builder: rowan::GreenNodeBuilder::new(),
             problems: Vec::new(),
         }
+    }
+
+    pub fn without_trivia(mut self) -> Self {
+        self.preserve_trivia = false;
+        self
     }
 
     #[cfg(test)]
@@ -62,6 +69,7 @@ impl<'a> Parser<'a> {
             ),
             peeked: None,
             trivia: Vec::new(),
+            preserve_trivia: true,
             open_node_stack: Vec::new(),
             builder: rowan::GreenNodeBuilder::new(),
             problems: Vec::new(),
@@ -79,23 +87,46 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn run_partial(
+        mut self,
+        rule: fn(&mut Self, TokenKindSet) -> Result<()>,
+    ) -> ParseResult {
+        if let Err(problem) = rule(&mut self, TokenKind::EOF.into()) {
+            self.push_problem(problem);
+        } else {
+            assert_eq!(self.peek(), EOF);
+        }
+        let green_node = self.builder.finish();
+        ParseResult {
+            syntax: rowan::SyntaxNode::new_root(green_node),
+            problems: self.problems,
+        }
+    }
+
     pub(crate) fn push_problem(&mut self, problem: Problem) {
         self.problems.push(problem);
     }
 
     pub(crate) fn error(&mut self, message: String) -> Problem {
         let span = self.peeked.unwrap().1;
-        let node = *self.open_node_stack.last().unwrap();
-        assert!(node != NodeKind::ERROR);
+        let node = self
+            .open_node_stack
+            .last()
+            .copied()
+            .unwrap_or(NodeKind::ERROR);
         let source = format!("parser/{}", node.to_string().to_ascii_lowercase());
-        self.mapper
-            .error(span.start as u32, span.end as u32, source, message)
+        self.mapper.error(span.start, span.end, source, message)
     }
 
     pub(crate) fn commit_trivia(&mut self) {
-        for (token, span) in std::mem::take(&mut self.trivia).into_iter() {
-            self.builder
-                .token(token.into(), &self.input[span.into_range()]);
+        if self.preserve_trivia {
+            for (token, span) in self.trivia.drain(..) {
+                self.builder
+                    .token(token.into(), &self.input[span.into_range()]);
+            }
+        } else {
+            self.trivia.clear();
         }
     }
 
@@ -137,7 +168,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn expect(&mut self, expected: TokenKindSet) -> Result<TokenKind> {
-        let expected = expected.into();
         let token = self.peek();
         if token.is(expected) {
             Ok(token)
