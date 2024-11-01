@@ -1,16 +1,8 @@
+use strum::VariantArray;
+
 #[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
 #[derive(
-    Debug,
-    Hash,
-    PartialOrd,
-    Ord,
-    enumset::EnumSetType,
-    logos::Logos,
-    strum::Display,
-    strum::EnumCount,
-    strum::EnumIter,
-    strum::FromRepr,
+    Debug, Hash, PartialOrd, Ord, enumset::EnumSetType, logos::Logos, strum::Display, VariantArray,
 )]
 #[repr(u16)]
 #[enumset(repr = "u64")]
@@ -133,6 +125,8 @@ pub const LITERALS: TokenKindSet = enumset::enum_set!(LIT_NAT | KW_FALSE | KW_TR
 pub const TRIVIA: TokenKindSet = enumset::enum_set!(WHITESPACE | COMMENT);
 
 impl TokenKind {
+    pub const LAST: Self = Self::VARIANTS[Self::VARIANTS.len() - 1];
+
     #[inline(always)]
     pub fn is(self, set: TokenKindSet) -> bool {
         set.contains(self)
@@ -144,24 +138,30 @@ impl TokenKind {
     }
 }
 
-impl TryFrom<rowan::TokenKind> for TokenKind {
-    type Error = ();
-
-    fn try_from(value: rowan::TokenKind) -> Result<Self, Self::Error> {
-        Self::from_repr(value.0).ok_or(())
+impl From<TokenKind> for u16 {
+    fn from(kind: TokenKind) -> Self {
+        kind as u16
     }
 }
 
-impl From<TokenKind> for rowan::TokenKind {
-    fn from(value: TokenKind) -> Self {
-        Self(value as u16)
+impl TryFrom<u16> for TokenKind {
+    type Error = u16;
+
+    fn try_from(repr: u16) -> Result<Self, Self::Error> {
+        if repr <= Self::LAST as u16 {
+            Ok(unsafe { std::mem::transmute(repr) })
+        } else {
+            Err(repr)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use insta::assert_compact_debug_snapshot;
     use logos::Logos;
+    use strum::VariantArray;
 
     use super::*;
 
@@ -169,5 +169,31 @@ mod tests {
     fn lex_fun_x() {
         let tokens: Vec<_> = TokenKind::lexer(&"fun x -> 1").spanned().collect();
         assert_compact_debug_snapshot!(tokens, @"[(Ok(KW_FUN), 0..3), (Ok(WHITESPACE), 3..4), (Ok(IDENT), 4..5), (Ok(WHITESPACE), 5..6), (Ok(ARROW), 6..8), (Ok(WHITESPACE), 8..9), (Ok(LIT_NAT), 9..10)]");
+    }
+
+    #[test]
+    fn repr_is_index() {
+        for (index, node) in TokenKind::VARIANTS.iter().enumerate() {
+            assert_eq!((*node as u16) as usize, index, "failed for {:?}", node);
+        }
+    }
+
+    #[test]
+    fn last_is_max() {
+        for node in TokenKind::VARIANTS {
+            assert!(*node <= TokenKind::LAST, "failed for {:?}", node);
+        }
+    }
+
+    #[test]
+    fn try_from_repr_roundtrip() {
+        for token in TokenKind::VARIANTS {
+            assert_eq!(TokenKind::try_from(*token as u16), Ok(*token));
+        }
+    }
+
+    #[test]
+    fn try_from_past_last_fails() {
+        assert_matches!(TokenKind::try_from(TokenKind::LAST as u16 + 1), Err(_));
     }
 }

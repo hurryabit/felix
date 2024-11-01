@@ -1,16 +1,8 @@
+use strum::VariantArray;
+
 #[allow(non_camel_case_types)]
-#[allow(clippy::upper_case_acronyms)]
 #[derive(
-    Debug,
-    Hash,
-    PartialOrd,
-    Ord,
-    enumset::EnumSetType,
-    logos::Logos,
-    strum::Display,
-    strum::EnumCount,
-    strum::EnumIter,
-    strum::FromRepr,
+    Debug, Hash, PartialOrd, Ord, enumset::EnumSetType, strum::Display, VariantArray,
 )]
 #[repr(u16)]
 #[enumset(repr = "u64")]
@@ -93,16 +85,58 @@ pub(crate) enum AliasKind {
 
 pub(crate) type AliasKindSet = enumset::EnumSet<AliasKind>;
 
-impl TryFrom<rowan::NodeKind> for NodeKind {
-    type Error = ();
+impl NodeKind {
+    pub const LAST: Self = Self::VARIANTS[Self::VARIANTS.len() - 1];
+}
 
-    fn try_from(value: rowan::NodeKind) -> Result<Self, Self::Error> {
-        Self::from_repr(value.0).ok_or(())
+impl From<NodeKind> for u16 {
+    fn from(kind: NodeKind) -> Self {
+        kind as u16
     }
 }
 
-impl From<NodeKind> for rowan::NodeKind {
-    fn from(value: NodeKind) -> Self {
-        Self(value as u16)
+impl TryFrom<u16> for NodeKind {
+    type Error = u16;
+
+    fn try_from(repr: u16) -> Result<Self, Self::Error> {
+        if repr <= Self::LAST as u16 {
+            Ok(unsafe { std::mem::transmute(repr) })
+        } else {
+            Err(repr)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use assert_matches::assert_matches;
+    use strum::VariantArray;
+
+    use super::*;
+
+    #[test]
+    fn repr_is_index() {
+        for (index, node) in NodeKind::VARIANTS.iter().enumerate() {
+            assert_eq!((*node as u16) as usize, index, "failed for {:?}", node);
+        }
+    }
+
+    #[test]
+    fn last_is_max() {
+        for node in NodeKind::VARIANTS {
+            assert!(*node <= NodeKind::LAST, "failed for {:?}", node);
+        }
+    }
+
+    #[test]
+    fn try_from_repr_rountrip() {
+        for node in NodeKind::VARIANTS {
+            assert_eq!(NodeKind::try_from(*node as u16), Ok(*node));
+        }
+    }
+
+    #[test]
+    fn try_from_past_last_fails() {
+        assert_matches!(NodeKind::try_from(NodeKind::LAST as u16 + 1), Err(_));
     }
 }
