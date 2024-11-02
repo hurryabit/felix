@@ -1,5 +1,3 @@
-use std::fmt;
-
 use serde::Serialize;
 use tsify_next::Tsify;
 
@@ -9,7 +7,7 @@ pub struct SrcSpan<L> {
     pub end: L,
 }
 
-#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Tsify)]
 #[tsify(into_wasm_abi)]
 pub struct SrcLoc {
     pub line: u32,
@@ -31,17 +29,19 @@ pub struct Mapper {
 
 impl Mapper {
     pub fn new(input: &str) -> Self {
-        assert!(input.len() < u32::MAX as usize);
-        let mut line_starts = Vec::new();
-        let mut index = 0;
-        line_starts.push(index);
-        for line in input.lines() {
-            // FIXME(MH): This assumes a newline character is just one byte,
-            // which is not true on Windows.
-            // NOTE(MH): The cast from usize to u32 is safe because of the
-            // assert above.
-            index += line.len() as u32 + 1;
-            line_starts.push(index);
+        let input_len: u32 = input.len().try_into().expect("input too long");
+        let mut line_starts: Vec<u32> = input
+            .split_inclusive('\n')
+            .scan(0, |index, line| {
+                let res = *index;
+                // NOTE(MH): This cast does not truncate because `input.len()`
+                // fits into a u32.
+                *index += line.len() as u32;
+                Some(res)
+            })
+            .collect();
+        if input.ends_with("\n") {
+            line_starts.push(input_len);
         }
         Self { line_starts }
     }
@@ -52,24 +52,11 @@ impl Mapper {
             .binary_search(&index)
             .unwrap_or_else(|x| x - 1);
         SrcLoc {
-            // NOTE(MH): This cast ist safe because of the assert in Self::new.
+            // NOTE(MH): This cast does not truncate because the input's length
+            // fits into a u32.
             line: line as u32,
             column: index - self.line_starts[line],
         }
-    }
-}
-
-impl fmt::Display for SrcLoc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // NOTE(MH): Internally, positions are zero-based. The user gets to see
-        // them one-based though.
-        write!(f, "{}:{}", self.line + 1, self.column + 1)
-    }
-}
-
-impl fmt::Debug for SrcLoc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
     }
 }
 
@@ -93,19 +80,24 @@ mod tests {
     #[test]
     fn test_line_starts() {
         let cases = vec![
-            ("", vec![0]),
-            ("a", vec![0, 2]),
+            ("", vec![]),
+            ("a", vec![0]),
             ("a\n", vec![0, 2]),
-            ("aa", vec![0, 3]),
-            ("a\nb", vec![0, 2, 4]),
+            ("aa", vec![0]),
+            ("a\nb", vec![0, 2]),
             ("a\nb\n", vec![0, 2, 4]),
             ("ab\ncd\n", vec![0, 3, 6]),
-            ("\na", vec![0, 1, 3]),
+            ("\na", vec![0, 1]),
+            ("a\r\nb\n\rc", vec![0, 3, 5]),
         ];
         for (input, expected_line_starts) in cases {
             let mapper = Mapper::new(input);
             let expected_line_starts: Vec<_> = expected_line_starts.into_iter().collect();
-            assert_eq!(mapper.line_starts, expected_line_starts);
+            assert_eq!(
+                mapper.line_starts, expected_line_starts,
+                "input: {:?}",
+                input
+            );
         }
     }
 
@@ -124,11 +116,16 @@ mod tests {
             (8, 3, 0),
             (9, 4, 0),
             (10, 4, 1),
-            (11, 5, 0),
-            (100, 5, 89),
+            (11, 4, 2),
+            (100, 4, 91),
         ];
         for (index, line, column) in cases {
-            assert_eq!(mapper.src_loc(index), SrcLoc { line, column }, "index: {:?}", index);
+            assert_eq!(
+                mapper.src_loc(index),
+                SrcLoc { line, column },
+                "index: {:?}",
+                index
+            );
         }
     }
 }
