@@ -19,7 +19,7 @@ pub struct Problem {
     pub message: String,
 }
 
-impl Mapper {
+impl<'a> Mapper<'a> {
     pub fn problem(
         &self,
         start: u32,

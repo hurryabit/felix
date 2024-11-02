@@ -23,19 +23,20 @@ impl SrcLoc {
 /// Mapper between byte indices into the source buffer and source locations
 /// in the form of line/column pairs.
 #[derive(Debug, Eq, PartialEq)]
-pub struct Mapper {
+pub struct Mapper<'a> {
+    input: &'a str,
     line_starts: Vec<u32>,
 }
 
-impl Mapper {
-    pub fn new(input: &str) -> Self {
+impl<'a> Mapper<'a> {
+    pub fn new(input: &'a str) -> Self {
+        // NOTE(MH): Because we ensure that `input.len()` fits into a u32, all
+        // casts into u32 below do not truncate.
         let input_len: u32 = input.len().try_into().expect("input too long");
         let mut line_starts: Vec<u32> = input
             .split_inclusive('\n')
             .scan(0, |index, line| {
                 let res = *index;
-                // NOTE(MH): This cast does not truncate because `input.len()`
-                // fits into a u32.
                 *index += line.len() as u32;
                 Some(res)
             })
@@ -43,7 +44,7 @@ impl Mapper {
         if input.ends_with("\n") {
             line_starts.push(input_len);
         }
-        Self { line_starts }
+        Self { input, line_starts }
     }
 
     pub fn src_loc(&self, index: u32) -> SrcLoc {
@@ -51,11 +52,17 @@ impl Mapper {
             .line_starts
             .binary_search(&index)
             .unwrap_or_else(|x| x - 1);
+        let index = index as usize;
+        let line_start = self.line_starts[line] as usize;
+        let line_index = index - line_start;
+        let line_text = &self.input[line_start..];
+        let column = line_text
+            .char_indices()
+            .take_while(|(i, _)| *i < line_index)
+            .count();
         SrcLoc {
-            // NOTE(MH): This cast does not truncate because the input's length
-            // fits into a u32.
             line: line as u32,
-            column: index - self.line_starts[line],
+            column: column as u32,
         }
     }
 }
@@ -89,21 +96,17 @@ mod tests {
             ("ab\ncd\n", vec![0, 3, 6]),
             ("\na", vec![0, 1]),
             ("a\r\nb\n\rc", vec![0, 3, 5]),
+            ("λ\nμ∀\n", vec![0, 3, 9]),
         ];
-        for (input, expected_line_starts) in cases {
+        for (input, expected) in cases {
             let mapper = Mapper::new(input);
-            let expected_line_starts: Vec<_> = expected_line_starts.into_iter().collect();
-            assert_eq!(
-                mapper.line_starts, expected_line_starts,
-                "input: {:?}",
-                input
-            );
+            assert_eq!(mapper.line_starts, expected, "input: {:?}", input);
         }
     }
 
     #[test]
     fn test_translation() {
-        let mapper = Mapper::new("ab\nc\nde\n\nf");
+        let mapper = Mapper::new("ab\nc\nde\n\nfλgμ\n∀\nh\r\n");
         let cases = vec![
             (0, 0, 0),
             (1, 0, 1),
@@ -117,7 +120,21 @@ mod tests {
             (9, 4, 0),
             (10, 4, 1),
             (11, 4, 2),
-            (100, 4, 91),
+            (12, 4, 2),
+            (13, 4, 3),
+            (14, 4, 4),
+            (15, 4, 4),
+            (16, 5, 0),
+            (17, 5, 1),
+            (18, 5, 1),
+            (19, 5, 1),
+            (20, 6, 0),
+            (21, 6, 1),
+            (22, 6, 2),
+            (23, 7, 0),
+            (24, 7, 0),
+            (25, 7, 0),
+            (99, 7, 0),
         ];
         for (index, line, column) in cases {
             assert_eq!(

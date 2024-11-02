@@ -15,7 +15,7 @@ static FAKE_MAPPER: std::sync::LazyLock<Mapper> =
 /// Stateful parser for the Rufus language.
 pub struct Parser<'a> {
     input: &'a str,
-    mapper: &'a Mapper,
+    mapper: &'a Mapper<'a>,
     lexer:
         Box<dyn Iterator<Item = (std::result::Result<TokenKind, ()>, std::ops::Range<usize>)> + 'a>,
     peeked: Option<(TokenKind, SrcSpan<u32>)>,
