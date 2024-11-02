@@ -46,15 +46,15 @@ impl Mapper {
         Self { line_starts }
     }
 
-    pub fn src_loc(&self, loc: u32) -> SrcLoc {
+    pub fn src_loc(&self, index: u32) -> SrcLoc {
         let line = self
             .line_starts
-            .binary_search(&loc)
+            .binary_search(&index)
             .unwrap_or_else(|x| x - 1);
         SrcLoc {
-            // NOTE(MH): This cast ist safe because of the assert in new.
+            // NOTE(MH): This cast ist safe because of the assert in Self::new.
             line: line as u32,
-            column: loc - self.line_starts[line],
+            column: index - self.line_starts[line],
         }
     }
 }
@@ -103,15 +103,15 @@ mod tests {
             ("\na", vec![0, 1, 3]),
         ];
         for (input, expected_line_starts) in cases {
-            let humanizer = Mapper::new(input);
+            let mapper = Mapper::new(input);
             let expected_line_starts: Vec<_> = expected_line_starts.into_iter().collect();
-            assert_eq!(humanizer.line_starts, expected_line_starts);
+            assert_eq!(mapper.line_starts, expected_line_starts);
         }
     }
 
     #[test]
     fn test_translation() {
-        let humanizer = Mapper::new("ab\nc\nde\n\nf");
+        let mapper = Mapper::new("ab\nc\nde\n\nf");
         let cases = vec![
             (0, 0, 0),
             (1, 0, 1),
@@ -127,8 +127,8 @@ mod tests {
             (11, 5, 0),
             (100, 5, 89),
         ];
-        for (loc, line, column) in cases {
-            assert_eq!(humanizer.src_loc(loc), SrcLoc { line, column });
+        for (index, line, column) in cases {
+            assert_eq!(mapper.src_loc(index), SrcLoc { line, column }, "index: {:?}", index);
         }
     }
 }
