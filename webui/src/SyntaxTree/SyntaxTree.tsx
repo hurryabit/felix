@@ -1,11 +1,11 @@
-import { useEffect } from "react";
+import { MouseEvent, useCallback, useEffect } from "react";
 import { IconAbc, IconChevronDown } from "@tabler/icons-react";
-import { Box, Group, ScrollArea, Tree, useTree } from "@mantine/core";
+import { Box, Group, ScrollArea, Text, Tree, useTree } from "@mantine/core";
 
 import "@mantine/code-highlight/styles.css";
 import "ace-builds/css/theme/github_light_default.css";
 
-import { useScrollIntoView } from "@mantine/hooks";
+import { useScrollIntoView, useTimeout } from "@mantine/hooks";
 import { useAppState, useAppStateDispatch } from "../AppState";
 import * as classes from "./SyntaxTree.css";
 
@@ -20,32 +20,69 @@ function easeInOutExpo(x: number): number {
 }
 
 export default function SyntaxTree() {
-    const { cursedSyntax, cursedPath, treeData } = useAppState();
+    const { elements, inspectedNode, inspectedPath, treeData, gotoCursor } = useAppState();
     const dispatch = useAppStateDispatch();
-    const tree = useTree();
-    const { expand, hoveredNode } = tree;
+    const tree = useTree({ multiple: false, initialExpandedState: { "": true } });
+    const { expand, toggleExpanded } = tree;
     const { scrollableRef, targetRef, scrollIntoView } = useScrollIntoView<
         HTMLDivElement,
         HTMLDivElement
     >({ duration: 200, easing: easeInOutExpo });
-
-    // NOTE(MH): This is ugly but I don't know how to do better with the
-    // current Tree API.
-    useEffect(
-        function () {
-            dispatch({ type: "setHoveredNode", hoveredNode });
-        },
-        [dispatch, hoveredNode],
-    );
+    const { start: startScrollIntoView } = useTimeout(function () {
+        scrollIntoView({ alignment: "center" });
+    }, 10);
 
     useEffect(
         function () {
-            for (const node of cursedPath) {
+            if (inspectedPath.length === 0) return;
+            for (const node of inspectedPath) {
                 expand(node);
             }
-            scrollIntoView({ alignment: "center" });
+            startScrollIntoView();
         },
-        [cursedSyntax, cursedPath, expand, scrollIntoView],
+        [inspectedPath, expand, startScrollIntoView],
+    );
+
+    const onClickChevron = useCallback(
+        function (event: MouseEvent<SVGSVGElement>) {
+            const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
+            if (node === undefined) return;
+            toggleExpanded(node);
+        },
+        [toggleExpanded],
+    );
+
+    const onClickLabel = useCallback(
+        function (event: MouseEvent<HTMLElement>) {
+            const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
+            if (node === undefined) return;
+            if (node === inspectedNode) {
+                dispatch({ type: "inspectNodeFromTree", node: null });
+            } else {
+                dispatch({ type: "inspectNodeFromTree", node });
+                const syntax = elements.get(node);
+                if (syntax !== undefined) {
+                    gotoCursor(syntax.start);
+                }
+            }
+        },
+        [elements, inspectedNode, dispatch, gotoCursor],
+    );
+
+    const onMouseEnterLabel = useCallback(
+        function (event: MouseEvent<HTMLElement>) {
+            const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
+            if (node === undefined) return;
+            dispatch({ type: "setHoveredNode", hoveredNode: node });
+        },
+        [dispatch],
+    );
+
+    const onMouseLeaveLabel = useCallback(
+        function () {
+            dispatch({ type: "setHoveredNode", hoveredNode: null });
+        },
+        [dispatch],
     );
 
     return (
@@ -56,25 +93,38 @@ export default function SyntaxTree() {
                     tree={tree}
                     levelOffset={24}
                     renderNode={({ node, expanded, hasChildren, elementProps }) => (
-                        <Group gap={8} {...elementProps}>
+                        <Group
+                            gap={8}
+                            {...elementProps}
+                            onClick={undefined}
+                            style={{
+                                background: "none",
+                                cursor: "default",
+                            }}
+                        >
                             {hasChildren ? (
                                 <IconChevronDown
                                     size={16}
                                     style={{
+                                        cursor: "pointer",
                                         transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
                                     }}
+                                    onClick={onClickChevron}
                                 />
                             ) : (
                                 <IconAbc size={16} />
                             )}
-                            <Box
-                                className={
-                                    node.value === cursedSyntax?.id ? classes.cursed : undefined
-                                }
-                                ref={node.value === cursedSyntax?.id ? targetRef : undefined}
+                            <Text
+                                component="span"
+                                className={classes.syntaxKind}
+                                data-selected={node.value === inspectedNode ? true : undefined}
+                                ref={node.value === inspectedNode ? targetRef : undefined}
+                                onClick={onClickLabel}
+                                onMouseEnter={onMouseEnterLabel}
+                                onMouseLeave={onMouseLeaveLabel}
                             >
-                                <span className={classes.syntaxKind}>{node.label}</span>
-                            </Box>
+                                {node.label}
+                            </Text>
                         </Group>
                     )}
                 />

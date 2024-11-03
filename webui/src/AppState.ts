@@ -8,9 +8,9 @@ export type AppState = {
     program: string;
     syntax: wasm.Element | undefined;
     problems: wasm.Problem[];
-    cursor: wasm.SrcLoc;
-    cursedSyntax: wasm.Element | null;
-    cursedPath: string[];
+    inspectedNode: string | null;
+    inspectedSyntax: wasm.Element | null;
+    inspectedPath: string[];
     hoveredNode: string | null;
     hoveredSyntax: wasm.Element | null;
     treeData: TreeNodeData[];
@@ -20,7 +20,8 @@ export type AppState = {
 
 export type Action =
     | { type: "setProgram"; program: string }
-    | { type: "setCursor"; cursor: wasm.SrcLoc }
+    | { type: "inspectNodeFromTree"; node: string | null }
+    | { type: "inspectNodeFromEditor"; loc: wasm.SrcLoc }
     | { type: "setHoveredNode"; hoveredNode: string | null }
     | { type: "setGotoCursor"; gotoCursor: GotoCursor };
 
@@ -28,9 +29,9 @@ export const INITIAL_STATE: AppState = {
     program: "",
     syntax: undefined,
     problems: [],
-    cursor: { line: -1, column: -1 },
-    cursedSyntax: null,
-    cursedPath: [],
+    inspectedNode: null,
+    inspectedSyntax: null,
+    inspectedPath: [],
     hoveredNode: null,
     hoveredSyntax: null,
     treeData: [],
@@ -45,8 +46,10 @@ export function reducer(state: AppState, action: Action): AppState {
     switch (action.type) {
         case "setProgram":
             return setProgram(state, action.program);
-        case "setCursor":
-            return setCursor(state, action.cursor);
+        case "inspectNodeFromTree":
+            return inspectNodeFromTree(state, action.node);
+        case "inspectNodeFromEditor":
+            return inspectNodeFromEditor(state, action.loc);
         case "setHoveredNode":
             return setHoveredNode(state, action.hoveredNode);
         case "setGotoCursor":
@@ -77,14 +80,24 @@ function setProgram(state: AppState, program: string): AppState {
     return { ...state, program, syntax, problems, treeData, elements };
 }
 
-function setCursor(state: AppState, cursor: wasm.SrcLoc): AppState {
-    if (cursor.line === state.cursor.line && cursor.column === state.cursor.column) return state;
-    let cursedSyntax: wasm.Element | null = null;
-    const cursedPath: string[] = [];
-    if (state.syntax) {
-        cursedSyntax = findCursed(state.syntax, cursor, cursedPath);
+function inspectNodeFromTree(state: AppState, node: string | null): AppState {
+    if (node === state.inspectedNode) return state;
+    let syntax: wasm.Element | null = null;
+    if (node !== null) {
+        syntax = state.elements.get(node) ?? null;
+        if (syntax === null) {
+            node = null;
+        }
     }
-    return { ...state, cursor, cursedSyntax, cursedPath };
+    return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: [] };
+}
+
+function inspectNodeFromEditor(state: AppState, loc: wasm.SrcLoc): AppState {
+    if (state.syntax === undefined) return state;
+    const path: string[] = [];
+    const syntax = findCursed(state.syntax, loc, path);
+    const node = syntax.id;
+    return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: path };
 }
 
 function setHoveredNode(state: AppState, hoveredNode: string | null): AppState {
@@ -128,7 +141,7 @@ function before(x: wasm.SrcLoc, y: wasm.SrcLoc): boolean {
     return x.line < y.line || (x.line === y.line && x.column <= y.column);
 }
 
-function findCursed(element: wasm.Element, cursor: wasm.SrcLoc, path: string[]): wasm.Element {
+function findCursed(element: wasm.Element, loc: wasm.SrcLoc, path: string[]): wasm.Element {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         if (element.tag === "TOKEN") {
@@ -136,11 +149,11 @@ function findCursed(element: wasm.Element, cursor: wasm.SrcLoc, path: string[]):
         }
         path.push(element.id);
         // TODO(MH): Use binary search for large counts of children.
-        const child = element.children.findLast((x) => before(x.start, cursor));
+        const child = element.children.findLast((x) => before(x.start, loc));
         if (child === undefined) {
             return element;
         }
-        if (child.tag === "NODE" && before(cursor, child.start)) {
+        if (child.tag === "NODE" && before(loc, child.start)) {
             path.push(child.id);
             return child;
         }

@@ -28,6 +28,14 @@ interface IAceSelection {
     getRange(): IAceRange;
 }
 
+interface IAceMouseEvent {
+    stopPropagation(): void;
+    preventDefault(): void;
+    getDocumentPosition(): IAcePoint;
+    getButton(): 0 | 1 | 2;
+    getAccelKey(): boolean;
+}
+
 type SrcLoc = syntax.SrcLoc;
 
 interface SrcSpan {
@@ -96,7 +104,7 @@ const substitutions: Map<string, string> = new Map([
 
 export default function Editor() {
     const self = useRef<AceEditor>(null);
-    const { program, problems, hoveredSyntax, cursedSyntax } = useAppState();
+    const { program, problems, inspectedSyntax, hoveredSyntax } = useAppState();
     const dispatch = useAppStateDispatch();
     const setProgram = useDebouncedCallback(function (program: string) {
         dispatch({ type: "setProgram", program });
@@ -116,15 +124,15 @@ export default function Editor() {
             if (selection !== null) {
                 markers.push(makeMarker(selection, classes.selectionMarker));
             }
+            if (inspectedSyntax !== null) {
+                markers.push(makeMarker(inspectedSyntax, classes.inspectedMarker));
+            }
             if (hoveredSyntax !== null) {
                 markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
             }
-            if (cursedSyntax !== null) {
-                markers.push(makeMarker(cursedSyntax, classes.cursedMarker));
-            }
             return markers;
         },
-        [problems, selection, hoveredSyntax, cursedSyntax],
+        [problems, selection, inspectedSyntax, hoveredSyntax],
     );
 
     useEffect(
@@ -144,16 +152,33 @@ export default function Editor() {
         [dispatch],
     );
 
+    useEffect(function () {
+        const editor = self.current?.editor;
+        if (!editor) return;
+        const lambdaMode = new LambdaMode();
+        editor.session.setMode(lambdaMode as Ace.SyntaxMode);
+        editor.session.setUndoSelect(false);
+        editor.gotoLine(1, 0, true);
+    }, []);
+
     useEffect(
         function () {
             const editor = self.current?.editor;
             if (!editor) return;
-            const lambdaMode = new LambdaMode();
-            editor.session.setMode(lambdaMode as Ace.SyntaxMode);
-            editor.session.setUndoSelect(false);
-            editor.gotoLine(1, 0, true);
+            console.debug("adding onclick handler to editor");
+            // NOTE(MH): If dispatch changes, which it shouldn't, we might be
+            // leaking event handlers. I don't think this matters in practice.
+            editor.addEventListener("click", function (event: IAceMouseEvent) {
+                if (event.getButton() !== 0 || !event.getAccelKey()) return;
+                event.stopPropagation();
+                event.preventDefault();
+                dispatch({
+                    type: "inspectNodeFromEditor",
+                    loc: pointToLoc(event.getDocumentPosition()),
+                });
+            });
         },
-        [self],
+        [dispatch],
     );
 
     const onChange = useCallback(
@@ -198,13 +223,6 @@ export default function Editor() {
         [setProgram],
     );
 
-    const onCursorChange = useCallback(
-        function (selection: IAceSelection) {
-            dispatch({ type: "setCursor", cursor: pointToLoc(selection.getCursor()) });
-        },
-        [dispatch],
-    );
-
     const onSelectionChange = useCallback(function (selection: IAceSelection) {
         setSelection(rangeToSpan(selection.getRange()));
     }, []);
@@ -218,7 +236,6 @@ export default function Editor() {
             width="100%"
             height="100%"
             onChange={onChange}
-            onCursorChange={onCursorChange}
             onSelectionChange={onSelectionChange}
             mode="text"
             theme="github_light_default"
@@ -227,6 +244,7 @@ export default function Editor() {
             setOptions={{
                 enableBasicAutocompletion: true,
                 enableLiveAutocompletion: false, // We want to trigger autocompletion manually.
+                enableMultiselect: false,
                 fontFamily: vars.fontFamilyMonospace,
                 fontSize: vars.fontSizes.md,
                 highlightActiveLine: false,

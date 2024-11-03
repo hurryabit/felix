@@ -1,19 +1,20 @@
-import { globalStyle, style } from "@vanilla-extract/css";
+import { style } from "@vanilla-extract/css";
 import { vars } from "../theme";
 
 export const syntaxKind = style({
     fontFamily: vars.fontFamilyMonospace,
     fontSize: vars.fontSizes.md,
-    paddingLeft: vars.radius.sm,
-    paddingRight: vars.radius.sm,
-    borderRadius: vars.radius.sm,
+    lineHeight: 1,
+    padding: [vars.radius.sm, vars.radius.md, vars.radius.sm, vars.radius.md],
+    borderRadius: vars.radius.md,
+    cursor: "pointer",
     ":hover": {
         background: vars.colors.primaryColors.lightHover,
     },
-});
-
-export const cursed = style({});
-
-globalStyle(`${cursed} ${syntaxKind}`, {
-    background: vars.colors.green.lightHover,
+    selectors: {
+        "&[data-selected]": {
+            color: vars.colors.white,
+            background: vars.colors.primaryColors.filled,
+        },
+    },
 });

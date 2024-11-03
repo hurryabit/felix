@@ -14,10 +14,12 @@ export const hoveredMarker = style({
     borderRadius: rem(2),
 });
 
-export const cursedMarker = style({
+export const inspectedMarker = style({
     position: "absolute",
-    background: vars.colors.green.lightHover,
-    borderRadius: rem(2),
+    // background: vars.colors.primaryColors[2],
+    // borderRadius: rem(2),
+    borderRadius: 0,
+    borderBottom: `solid 2px ${vars.colors.primary}`,
 });
 
 export const selectionMarker = style({
