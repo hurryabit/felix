@@ -1,15 +1,11 @@
 import { MouseEvent, useCallback } from "react";
 import { IconCircleX } from "@tabler/icons-react";
-import { Problem } from "felix-wasm-bridge";
 import { Box, List, ScrollArea } from "@mantine/core";
+import { useAppState } from "../AppState";
 import * as classes from "./Problems.css";
 
-type Props = {
-    problems: Problem[];
-    onSelect: (problem: Problem) => void;
-};
-
-export default function ProblemsPane({ problems, onSelect }: Props) {
+export default function ProblemsPane() {
+    const { problems, gotoCursor } = useAppState();
     const onProblemClick = useCallback(
         function onClick(event: MouseEvent<HTMLLIElement>) {
             const index = parseInt(event.currentTarget.dataset.index ?? "");
@@ -17,10 +13,9 @@ export default function ProblemsPane({ problems, onSelect }: Props) {
                 console.error(`Cannot handle click on problem: ${event}`);
                 return;
             }
-            const problem = problems[index];
-            onSelect(problem);
+            gotoCursor(problems[index].start);
         },
-        [problems, onSelect],
+        [problems, gotoCursor],
     );
 
     return (

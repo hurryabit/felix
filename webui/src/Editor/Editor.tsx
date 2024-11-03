@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ace } from "ace-builds/ace";
 import { Range } from "ace-builds/src-noconflict/ace";
 import AceEditor, { IAnnotation, IMarker } from "react-ace";
@@ -7,6 +7,8 @@ import "ace-builds/src-noconflict/ext-language_tools";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
 import type * as syntax from "felix-wasm-bridge";
+import { useDebouncedCallback } from "@mantine/hooks";
+import { useAppState, useAppStateDispatch } from "../AppState";
 import { vars } from "../theme";
 import LambdaMode from "./Lambda";
 import * as classes from "./Editor.css";
@@ -92,25 +94,13 @@ const substitutions: Map<string, string> = new Map([
     ["~", "¬"],
 ]);
 
-type Props = {
-    aceRef: RefObject<AceEditor>;
-    program: string;
-    setProgram: (program: string) => void;
-    setCursor: (loc: syntax.SrcLoc) => void;
-    problems: syntax.Problem[];
-    hoveredSyntax: syntax.Element | null;
-    cursedSyntax: syntax.Element | null;
-};
-
-export default function Editor({
-    aceRef,
-    program,
-    setProgram,
-    setCursor,
-    problems,
-    hoveredSyntax,
-    cursedSyntax,
-}: Props) {
+export default function Editor() {
+    const self = useRef<AceEditor>(null);
+    const { program, problems, hoveredSyntax, cursedSyntax } = useAppState();
+    const dispatch = useAppStateDispatch();
+    const setProgram = useDebouncedCallback(function (program: string) {
+        dispatch({ type: "setProgram", program });
+    }, 50);
     const [selection, setSelection] = useState<SrcSpan | null>(null);
     const annotations = useMemo(
         function () {
@@ -139,14 +129,31 @@ export default function Editor({
 
     useEffect(
         function () {
-            const lambdaMode = new LambdaMode();
-            const editor = aceRef.current?.editor;
-            // @ts-expect-error: LambdaMode is not properly typed anyway.
-            editor?.session.setMode(lambdaMode);
-            editor?.session.setUndoSelect(false);
-            editor?.gotoLine(1, 0, true);
+            function gotoCursor(cursor: SrcLoc) {
+                const editor = self.current?.editor;
+                if (!editor) {
+                    console.error("gotoCursor was called before the editor was loaded");
+                    return;
+                }
+                // NOTE(MH): The +1 is due to an inconsistency in Ace Editor.
+                editor.gotoLine(cursor.line + 1, cursor.column, true);
+                editor.focus();
+            }
+            dispatch({ type: "setGotoCursor", gotoCursor });
         },
-        [aceRef],
+        [dispatch],
+    );
+
+    useEffect(
+        function () {
+            const editor = self.current?.editor;
+            if (!editor) return;
+            const lambdaMode = new LambdaMode();
+            editor.session.setMode(lambdaMode as Ace.SyntaxMode);
+            editor.session.setUndoSelect(false);
+            editor.gotoLine(1, 0, true);
+        },
+        [self],
     );
 
     const onChange = useCallback(
@@ -155,11 +162,8 @@ export default function Editor({
             if (delta.action !== "insert") {
                 return;
             }
-            const session = aceRef.current?.editor.session;
-            if (session === undefined) {
-                console.error("No editor session.");
-                return;
-            }
+            const session = self.current?.editor.session;
+            if (!session) return;
             let token;
             let length;
 
@@ -191,14 +195,14 @@ export default function Editor({
             const start = { row: delta.end.row, column: delta.end.column - length };
             replaceInSession(session, Range.fromPoints(start, delta.end), short);
         },
-        [aceRef, setProgram],
+        [setProgram],
     );
 
     const onCursorChange = useCallback(
         function (selection: IAceSelection) {
-            setCursor(pointToLoc(selection.getCursor()));
+            dispatch({ type: "setCursor", cursor: pointToLoc(selection.getCursor()) });
         },
-        [setCursor],
+        [dispatch],
     );
 
     const onSelectionChange = useCallback(function (selection: IAceSelection) {
@@ -208,7 +212,7 @@ export default function Editor({
     return (
         <AceEditor
             name="editor"
-            ref={aceRef}
+            ref={self}
             defaultValue={program}
             focus
             width="100%"
