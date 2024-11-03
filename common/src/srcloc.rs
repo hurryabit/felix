@@ -30,6 +30,14 @@ pub struct Mapper<'a> {
 
 impl<'a> Mapper<'a> {
     pub fn new(input: &'a str) -> Self {
+        if input.len() == 0 {
+            // NOTE(MH): Handling the empty input special removes an edge case
+            // from `Self::src_loc`.
+            return Self {
+                input,
+                line_starts: vec![0],
+            };
+        }
         // NOTE(MH): Because we ensure that `input.len()` fits into a u32, all
         // casts into u32 below do not truncate.
         let input_len: u32 = input.len().try_into().expect("input too long");
@@ -87,7 +95,7 @@ mod tests {
     #[test]
     fn test_line_starts() {
         let cases = vec![
-            ("", vec![]),
+            ("", vec![0]),
             ("a", vec![0]),
             ("a\n", vec![0, 2]),
             ("aa", vec![0]),
@@ -106,6 +114,33 @@ mod tests {
 
     #[test]
     fn test_translation() {
+        let cases = vec![
+            ("", SrcLoc::new(0, 0), vec![]),
+            ("a", SrcLoc::new(0, 1), vec![]),
+            ("\n", SrcLoc::new(1, 0), vec![]),
+            ("\r\n", SrcLoc::new(1, 0), vec![(1, SrcLoc::new(0, 1))]),
+            ("λ", SrcLoc::new(0, 1), vec![(1, SrcLoc::new(0, 1))]),
+        ];
+        for (input, end, indices) in cases {
+            let mapper = Mapper::new(input);
+            let start = SrcLoc::new(0, 0);
+            for (index, src_loc) in [(0, start), (input.len() as u32, end), (u32::MAX, end)]
+                .into_iter()
+                .chain(indices)
+            {
+                assert_eq!(
+                    mapper.src_loc(index),
+                    src_loc,
+                    "input: {}, index: {}",
+                    input,
+                    index
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_translation_long() {
         let mapper = Mapper::new("ab\nc\nde\n\nfλgμ\n∀\nh\r\n");
         let cases = vec![
             (0, 0, 0),
