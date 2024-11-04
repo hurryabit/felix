@@ -9,7 +9,7 @@ export const syntaxKind = style({
     borderRadius: vars.radius.md,
     cursor: "pointer",
     ":hover": {
-        background: vars.colors.primaryColors.lightHover,
+        background: vars.colors.primaryColors[1],
     },
     selectors: {
         "&[data-selected]": {

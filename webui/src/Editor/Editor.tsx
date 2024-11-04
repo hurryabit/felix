@@ -118,18 +118,19 @@ export default function Editor() {
     );
     const markers = useMemo(
         function () {
-            const markers = problems.map(function (problem) {
-                return makeMarker(problem, classes.errorMarker);
-            });
+            const markers: IMarker[] = [];
+            if (hoveredSyntax !== null) {
+                markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
+            }
             if (selection !== null) {
                 markers.push(makeMarker(selection, classes.selectionMarker));
             }
             if (inspectedSyntax !== null) {
                 markers.push(makeMarker(inspectedSyntax, classes.inspectedMarker));
             }
-            if (hoveredSyntax !== null) {
-                markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
-            }
+            problems.forEach(function (problem) {
+                markers.push(makeMarker(problem, classes.errorMarker));
+            });
             return markers;
         },
         [problems, selection, inspectedSyntax, hoveredSyntax],
