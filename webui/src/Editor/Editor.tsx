@@ -8,7 +8,7 @@ import "ace-builds/src-noconflict/theme-github_light_default";
 
 import type * as syntax from "felix-wasm-bridge";
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useAppState, useAppStateDispatch } from "../AppState";
+import { useAppState, useAppStateDispatch } from "../AppState/hooks";
 import { vars } from "../theme";
 import LambdaMode from "./Lambda";
 import * as classes from "./Editor.css";

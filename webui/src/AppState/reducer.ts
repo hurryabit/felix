@@ -1,10 +1,9 @@
-import { createContext, Dispatch, useContext } from "react";
 import * as wasm from "felix-wasm-bridge";
-import { TreeNodeData } from "@mantine/core";
+import type { TreeNodeData } from "@mantine/core";
 
 type GotoCursor = (cursor: wasm.SrcLoc) => void;
 
-export type AppState = {
+export type State = {
     program: string;
     syntax: wasm.Element | undefined;
     problems: wasm.Problem[];
@@ -25,7 +24,7 @@ export type Action =
     | { type: "setHoveredNode"; hoveredNode: string | null }
     | { type: "setGotoCursor"; gotoCursor: GotoCursor };
 
-export const INITIAL_STATE: AppState = {
+export const INITIAL_STATE: State = {
     program: "",
     syntax: undefined,
     problems: [],
@@ -41,7 +40,7 @@ export const INITIAL_STATE: AppState = {
     },
 };
 
-export function reducer(state: AppState, action: Action): AppState {
+export function reducer(state: State, action: Action): State {
     console.debug("reducing", action);
     switch (action.type) {
         case "setProgram":
@@ -64,11 +63,11 @@ in
 twice (λu:Unit. u) unit
 `;
 
-export function init(state: AppState): AppState {
+export function init(state: State): State {
     return setProgram(state, INITIAL_PROGRAM);
 }
 
-function setProgram(state: AppState, program: string): AppState {
+function setProgram(state: State, program: string): State {
     if (program === state.program) return state;
     const start = performance.now();
     const { problems, syntax } = wasm.parse(program, {
@@ -80,7 +79,7 @@ function setProgram(state: AppState, program: string): AppState {
     return { ...state, program, syntax, problems, treeData, elements };
 }
 
-function inspectNodeFromTree(state: AppState, node: string | null): AppState {
+function inspectNodeFromTree(state: State, node: string | null): State {
     if (node === state.inspectedNode) return state;
     let syntax: wasm.Element | null = null;
     if (node !== null) {
@@ -92,7 +91,7 @@ function inspectNodeFromTree(state: AppState, node: string | null): AppState {
     return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: [] };
 }
 
-function inspectNodeFromEditor(state: AppState, loc: wasm.SrcLoc): AppState {
+function inspectNodeFromEditor(state: State, loc: wasm.SrcLoc): State {
     if (state.syntax === undefined) return state;
     const path: string[] = [];
     const syntax = findCursed(state.syntax, loc, path);
@@ -100,7 +99,7 @@ function inspectNodeFromEditor(state: AppState, loc: wasm.SrcLoc): AppState {
     return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: path };
 }
 
-function setHoveredNode(state: AppState, hoveredNode: string | null): AppState {
+function setHoveredNode(state: State, hoveredNode: string | null): State {
     if (hoveredNode === state.hoveredNode) return state;
     const hoveredSyntax = hoveredNode !== null ? (state.elements.get(hoveredNode) ?? null) : null;
     return { ...state, hoveredNode, hoveredSyntax };
@@ -159,19 +158,4 @@ function findCursed(element: wasm.Element, loc: wasm.SrcLoc, path: string[]): wa
         }
         element = child;
     }
-}
-
-export const StateContext = createContext<AppState>(INITIAL_STATE);
-export const DispatchContext = createContext<Dispatch<Action> | undefined>(undefined);
-
-export function useAppState(): AppState {
-    return useContext(StateContext);
-}
-
-export function useAppStateDispatch(): Dispatch<Action> {
-    const dispatch = useContext(DispatchContext);
-    if (!dispatch) {
-        console.error("Using useAppStateDispatch outside of AppStateProvider.");
-    }
-    return dispatch!;
 }

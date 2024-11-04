@@ -6,7 +6,7 @@ import "@mantine/code-highlight/styles.css";
 import "ace-builds/css/theme/github_light_default.css";
 
 import { useScrollIntoView, useTimeout } from "@mantine/hooks";
-import { useAppState, useAppStateDispatch } from "../AppState";
+import { useAppState, useAppStateDispatch } from "../AppState/hooks";
 import * as classes from "./SyntaxTree.css";
 
 function easeInOutExpo(x: number): number {

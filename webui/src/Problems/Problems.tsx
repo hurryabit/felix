@@ -1,7 +1,7 @@
 import { MouseEvent, useCallback } from "react";
 import { IconCircleX } from "@tabler/icons-react";
 import { Box, List, ScrollArea } from "@mantine/core";
-import { useAppState } from "../AppState";
+import { useAppState } from "../AppState/hooks";
 import * as classes from "./Problems.css";
 
 export default function ProblemsPane() {

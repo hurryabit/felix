@@ -10,7 +10,7 @@ import {
 import * as wasm from "felix-wasm-bridge";
 import { ActionIcon, AppShell, Center, Group, MantineProvider, rem, Text } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
-import AppStateProvider from "./AppStateProvider";
+import AppStateProvider from "./AppState/AppStateProvider";
 import Main from "./Main/Main";
 import { theme, vars } from "./theme";
 
