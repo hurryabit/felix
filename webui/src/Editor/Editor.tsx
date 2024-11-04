@@ -248,6 +248,7 @@ export default function Editor() {
                 fontFamily: vars.fontFamilyMonospace,
                 fontSize: vars.fontSizes.md,
                 highlightActiveLine: false,
+                highlightSelectedWord: false,
                 newLineMode: "unix",
                 showPrintMargin: false,
                 useSoftTabs: true,

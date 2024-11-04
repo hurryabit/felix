@@ -8,18 +8,16 @@ export const errorMarker = style({
     borderBottom: "dotted 2px red",
 });
 
+export const inspectedMarker = style({
+    position: "absolute",
+    borderRadius: 0,
+    borderBottom: `solid 2px ${vars.colors.primary}`,
+});
+
 export const hoveredMarker = style({
     position: "absolute",
     background: vars.colors.primaryColors.lightHover,
     borderRadius: rem(2),
-});
-
-export const inspectedMarker = style({
-    position: "absolute",
-    // background: vars.colors.primaryColors[2],
-    // borderRadius: rem(2),
-    borderRadius: 0,
-    borderBottom: `solid 2px ${vars.colors.primary}`,
 });
 
 export const selectionMarker = style({
@@ -28,14 +26,6 @@ export const selectionMarker = style({
     borderRadius: rem(2),
 });
 
-globalStyle(".ace_editor .ace_marker-layer .ace_bracket", {
-    display: "none",
-});
-
-globalStyle(".ace_editor .ace_marker-layer .ace_selection", {
-    display: "none",
-});
-
-globalStyle(".ace_editor .ace_marker-layer .ace_selected-word", {
+globalStyle(".ace_editor .ace_marker-layer :is(.ace_bracket, .ace_selection)", {
     display: "none",
 });
