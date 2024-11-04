@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
@@ -8,4 +9,5 @@ import wasm from "vite-plugin-wasm";
 export default defineConfig({
     base: "/felix/",
     plugins: [react(), topLevelAwait(), vanillaExtractPlugin(), wasm()],
+    test: {},
 });

@@ -7,6 +7,8 @@
         "prettier": "pnpm run --dir=webui prettier",
         "prettier:write": "pnpm run --dir=webui prettier:write",
         "preview": "pnpm run --dir=webui preview",
+        "test": "pnpm run --dir=webui test",
+        "test:dev": "pnpm run --dir=webui test:dev",
         "upload": "pnpm run --dir=webui upload"
     }
 }
