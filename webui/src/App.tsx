@@ -7,7 +7,7 @@ import {
     IconMinimize,
     IconMoonFilled,
 } from "@tabler/icons-react";
-import * as wasm from "felix-wasm-bridge";
+import { type_system_name } from "felix-wasm-bridge";
 import { ActionIcon, AppShell, Center, Group, MantineProvider, rem, Text } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
 import AppStateProvider from "./AppState/AppStateProvider";
@@ -18,7 +18,7 @@ export default function App() {
     const { fullscreen, toggle: toggleFullscreen } = useFullscreen();
 
     useEffect(function () {
-        console.log(`One day, we'll type check using the ${wasm.type_system_name()}.`);
+        console.log(`One day, we'll type check using the ${type_system_name()}.`);
     }, []);
 
     return (

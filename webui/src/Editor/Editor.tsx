@@ -6,7 +6,7 @@ import AceEditor, { IAnnotation, IMarker } from "react-ace";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "ace-builds/src-noconflict/theme-github_light_default";
 
-import type * as syntax from "felix-wasm-bridge";
+import type { Problem, SrcLoc } from "felix-wasm-bridge";
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useAppState, useAppStateDispatch } from "../AppState/hooks";
 import { vars } from "../theme";
@@ -36,8 +36,6 @@ interface IAceMouseEvent {
     getAccelKey(): boolean;
 }
 
-type SrcLoc = syntax.SrcLoc;
-
 interface SrcSpan {
     start: SrcLoc;
     end: SrcLoc;
@@ -51,7 +49,7 @@ function rangeToSpan(range: IAceRange): SrcSpan {
     return { start: pointToLoc(range.start), end: pointToLoc(range.end) };
 }
 
-function makeAnnotation(problem: syntax.Problem): IAnnotation {
+function makeAnnotation(problem: Problem): IAnnotation {
     return {
         row: problem.start.line,
         column: problem.start.column,

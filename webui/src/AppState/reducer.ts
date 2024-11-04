@@ -1,26 +1,26 @@
-import * as wasm from "felix-wasm-bridge";
+import { Element, Node, parse, Problem, SrcLoc, Token } from "felix-wasm-bridge";
 import type { TreeNodeData } from "@mantine/core";
 
-type GotoCursor = (cursor: wasm.SrcLoc) => void;
+type GotoCursor = (cursor: SrcLoc) => void;
 
 export type State = {
     program: string;
-    syntax: wasm.Element | undefined;
-    problems: wasm.Problem[];
+    syntax: Element | undefined;
+    problems: Problem[];
     inspectedNode: string | null;
-    inspectedSyntax: wasm.Element | null;
+    inspectedSyntax: Element | null;
     inspectedPath: string[];
     hoveredNode: string | null;
-    hoveredSyntax: wasm.Element | null;
+    hoveredSyntax: Element | null;
     treeData: TreeNodeData[];
-    elements: Map<string, wasm.Element>;
+    elements: Map<string, Element>;
     gotoCursor: GotoCursor;
 };
 
 export type Action =
     | { type: "setProgram"; program: string }
     | { type: "inspectNodeFromTree"; node: string | null }
-    | { type: "inspectNodeFromEditor"; loc: wasm.SrcLoc }
+    | { type: "inspectNodeFromEditor"; loc: SrcLoc }
     | { type: "setHoveredNode"; hoveredNode: string | null }
     | { type: "setGotoCursor"; gotoCursor: GotoCursor };
 
@@ -70,7 +70,7 @@ export function init(state: State): State {
 function setProgram(state: State, program: string): State {
     if (program === state.program) return state;
     const start = performance.now();
-    const { problems, syntax } = wasm.parse(program, {
+    const { problems, syntax } = parse(program, {
         include_trivia: false,
     });
     const end = performance.now();
@@ -81,7 +81,7 @@ function setProgram(state: State, program: string): State {
 
 function inspectNodeFromTree(state: State, node: string | null): State {
     if (node === state.inspectedNode) return state;
-    let syntax: wasm.Element | null = null;
+    let syntax: Element | null = null;
     if (node !== null) {
         syntax = state.elements.get(node) ?? null;
         if (syntax === null) {
@@ -91,7 +91,7 @@ function inspectNodeFromTree(state: State, node: string | null): State {
     return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: [] };
 }
 
-function inspectNodeFromEditor(state: State, loc: wasm.SrcLoc): State {
+function inspectNodeFromEditor(state: State, loc: SrcLoc): State {
     if (state.syntax === undefined) return state;
     const path: string[] = [];
     const syntax = findCursed(state.syntax, loc, path);
@@ -105,10 +105,10 @@ function setHoveredNode(state: State, hoveredNode: string | null): State {
     return { ...state, hoveredNode, hoveredSyntax };
 }
 
-function syntaxToData(root: wasm.Element): [TreeNodeData[], Map<string, wasm.Element>] {
+function syntaxToData(root: Element): [TreeNodeData[], Map<string, Element>] {
     const elements = new Map();
 
-    function goElement(element: wasm.Element): TreeNodeData {
+    function goElement(element: Element): TreeNodeData {
         elements.set(element.id, element);
         switch (element.tag) {
             case "NODE":
@@ -118,7 +118,7 @@ function syntaxToData(root: wasm.Element): [TreeNodeData[], Map<string, wasm.Ele
         }
     }
 
-    function goNode(node: wasm.Node): TreeNodeData {
+    function goNode(node: Node): TreeNodeData {
         return {
             value: node.id,
             label: node.kind,
@@ -126,7 +126,7 @@ function syntaxToData(root: wasm.Element): [TreeNodeData[], Map<string, wasm.Ele
         };
     }
 
-    function goToken(token: wasm.Token): TreeNodeData {
+    function goToken(token: Token): TreeNodeData {
         return {
             value: token.id,
             label: `${token.kind} — ${token.text}`,
@@ -136,11 +136,11 @@ function syntaxToData(root: wasm.Element): [TreeNodeData[], Map<string, wasm.Ele
     return [[goElement(root)], elements];
 }
 
-function before(x: wasm.SrcLoc, y: wasm.SrcLoc): boolean {
+function before(x: SrcLoc, y: SrcLoc): boolean {
     return x.line < y.line || (x.line === y.line && x.column <= y.column);
 }
 
-function findCursed(element: wasm.Element, loc: wasm.SrcLoc, path: string[]): wasm.Element {
+function findCursed(element: Element, loc: SrcLoc, path: string[]): Element {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         if (element.tag === "TOKEN") {
