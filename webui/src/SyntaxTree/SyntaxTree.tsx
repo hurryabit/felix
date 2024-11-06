@@ -5,7 +5,7 @@ import { Box, Group, ScrollArea, Text, Tree, useTree } from "@mantine/core";
 import "@mantine/code-highlight/styles.css";
 import "ace-builds/css/theme/github_light_default.css";
 
-import { useScrollIntoView, useTimeout } from "@mantine/hooks";
+import { useScrollIntoView } from "@mantine/hooks";
 import { useAppState, useAppStateDispatch } from "../AppState/hooks";
 import * as classes from "./SyntaxTree.css";
 
@@ -28,16 +28,12 @@ export default function SyntaxTree() {
         HTMLDivElement,
         HTMLDivElement
     >({ duration: 200, easing: easeInOutExpo });
-    const { start: startScrollIntoView } = useTimeout(
-        () => scrollIntoView({ alignment: "center" }),
-        10,
-    );
 
     useEffect(() => {
         if (inspectedPath.length === 0) return;
         inspectedPath.forEach(expand);
-        startScrollIntoView();
-    }, [inspectedPath, expand, startScrollIntoView]);
+        setTimeout(() => scrollIntoView({ alignment: "center" }), 10);
+    }, [inspectedPath, expand, scrollIntoView]);
 
     const onClickChevron = useCallback(
         (event: MouseEvent<SVGSVGElement>) => {
