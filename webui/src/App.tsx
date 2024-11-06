@@ -17,9 +17,7 @@ import { theme, vars } from "./theme";
 export default function App() {
     const { fullscreen, toggle: toggleFullscreen } = useFullscreen();
 
-    useEffect(function () {
-        console.log(`One day, we'll type check using the ${type_system_name()}.`);
-    }, []);
+    useEffect(() => console.log(`One day, we'll type check using the ${type_system_name()}.`), []);
 
     return (
         <MantineProvider theme={theme}>

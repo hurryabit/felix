@@ -28,23 +28,19 @@ export default function SyntaxTree() {
         HTMLDivElement,
         HTMLDivElement
     >({ duration: 200, easing: easeInOutExpo });
-    const { start: startScrollIntoView } = useTimeout(function () {
-        scrollIntoView({ alignment: "center" });
-    }, 10);
-
-    useEffect(
-        function () {
-            if (inspectedPath.length === 0) return;
-            for (const node of inspectedPath) {
-                expand(node);
-            }
-            startScrollIntoView();
-        },
-        [inspectedPath, expand, startScrollIntoView],
+    const { start: startScrollIntoView } = useTimeout(
+        () => scrollIntoView({ alignment: "center" }),
+        10,
     );
 
+    useEffect(() => {
+        if (inspectedPath.length === 0) return;
+        inspectedPath.forEach(expand);
+        startScrollIntoView();
+    }, [inspectedPath, expand, startScrollIntoView]);
+
     const onClickChevron = useCallback(
-        function (event: MouseEvent<SVGSVGElement>) {
+        (event: MouseEvent<SVGSVGElement>) => {
             const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
             if (node === undefined) return;
             toggleExpanded(node);
@@ -53,7 +49,7 @@ export default function SyntaxTree() {
     );
 
     const onClickLabel = useCallback(
-        function (event: MouseEvent<HTMLElement>) {
+        (event: MouseEvent<HTMLElement>) => {
             const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
             if (node === undefined) return;
             if (node === inspectedNode) {
@@ -70,7 +66,7 @@ export default function SyntaxTree() {
     );
 
     const onMouseEnterLabel = useCallback(
-        function (event: MouseEvent<HTMLElement>) {
+        (event: MouseEvent<HTMLElement>) => {
             const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
             if (node === undefined) return;
             dispatch({ type: "setHoveredNode", hoveredNode: node });
@@ -79,9 +75,7 @@ export default function SyntaxTree() {
     );
 
     const onMouseLeaveLabel = useCallback(
-        function () {
-            dispatch({ type: "setHoveredNode", hoveredNode: null });
-        },
+        () => dispatch({ type: "setHoveredNode", hoveredNode: null }),
         [dispatch],
     );
 

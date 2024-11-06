@@ -104,54 +104,42 @@ export default function Editor() {
     const self = useRef<AceEditor>(null);
     const { program, problems, inspectedSyntax, hoveredSyntax } = useAppState();
     const dispatch = useAppStateDispatch();
-    const setProgram = useDebouncedCallback(function (program: string) {
-        dispatch({ type: "setProgram", program });
-    }, 50);
+    const setProgram = useDebouncedCallback(
+        (program: string) => dispatch({ type: "setProgram", program }),
+        50,
+    );
     const [selection, setSelection] = useState<SrcSpan | null>(null);
-    const annotations = useMemo(
-        function () {
-            return problems.map(makeAnnotation);
-        },
-        [problems],
-    );
-    const markers = useMemo(
-        function () {
-            const markers: IMarker[] = [];
-            if (hoveredSyntax !== null) {
-                markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
-            }
-            if (selection !== null) {
-                markers.push(makeMarker(selection, classes.selectionMarker));
-            }
-            if (inspectedSyntax !== null) {
-                markers.push(makeMarker(inspectedSyntax, classes.inspectedMarker));
-            }
-            problems.forEach(function (problem) {
-                markers.push(makeMarker(problem, classes.errorMarker));
-            });
-            return markers;
-        },
-        [problems, selection, inspectedSyntax, hoveredSyntax],
-    );
+    const annotations = useMemo(() => problems.map(makeAnnotation), [problems]);
+    const markers = useMemo(() => {
+        const markers: IMarker[] = [];
+        if (hoveredSyntax !== null) {
+            markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
+        }
+        if (selection !== null) {
+            markers.push(makeMarker(selection, classes.selectionMarker));
+        }
+        if (inspectedSyntax !== null) {
+            markers.push(makeMarker(inspectedSyntax, classes.inspectedMarker));
+        }
+        problems.forEach((problem) => markers.push(makeMarker(problem, classes.errorMarker)));
+        return markers;
+    }, [problems, selection, inspectedSyntax, hoveredSyntax]);
 
-    useEffect(
-        function () {
-            function gotoCursor(cursor: SrcLoc) {
-                const editor = self.current?.editor;
-                if (!editor) {
-                    console.error("gotoCursor was called before the editor was loaded");
-                    return;
-                }
-                // NOTE(MH): The +1 is due to an inconsistency in Ace Editor.
-                editor.gotoLine(cursor.line + 1, cursor.column, true);
-                editor.focus();
+    useEffect(() => {
+        function gotoCursor(cursor: SrcLoc) {
+            const editor = self.current?.editor;
+            if (!editor) {
+                console.error("gotoCursor was called before the editor was loaded");
+                return;
             }
-            dispatch({ type: "setGotoCursor", gotoCursor });
-        },
-        [dispatch],
-    );
+            // NOTE(MH): The +1 is due to an inconsistency in Ace Editor.
+            editor.gotoLine(cursor.line + 1, cursor.column, true);
+            editor.focus();
+        }
+        dispatch({ type: "setGotoCursor", gotoCursor });
+    }, [dispatch]);
 
-    useEffect(function () {
+    useEffect(() => {
         const editor = self.current?.editor;
         if (!editor) return;
         const lambdaMode = new LambdaMode();
@@ -160,28 +148,25 @@ export default function Editor() {
         editor.gotoLine(1, 0, true);
     }, []);
 
-    useEffect(
-        function () {
-            const editor = self.current?.editor;
-            if (!editor) return;
-            console.debug("adding onclick handler to editor");
-            // NOTE(MH): If dispatch changes, which it shouldn't, we might be
-            // leaking event handlers. I don't think this matters in practice.
-            editor.addEventListener("click", function (event: IAceMouseEvent) {
-                if (event.getButton() !== 0 || !event.getAccelKey()) return;
-                event.stopPropagation();
-                event.preventDefault();
-                dispatch({
-                    type: "inspectNodeFromEditor",
-                    loc: pointToLoc(event.getDocumentPosition()),
-                });
+    useEffect(() => {
+        const editor = self.current?.editor;
+        if (!editor) return;
+        console.debug("adding onclick handler to editor");
+        // NOTE(MH): If dispatch changes, which it shouldn't, we might be
+        // leaking event handlers. I don't think this matters in practice.
+        editor.addEventListener("click", (event: IAceMouseEvent) => {
+            if (event.getButton() !== 0 || !event.getAccelKey()) return;
+            event.stopPropagation();
+            event.preventDefault();
+            dispatch({
+                type: "inspectNodeFromEditor",
+                loc: pointToLoc(event.getDocumentPosition()),
             });
-        },
-        [dispatch],
-    );
+        });
+    }, [dispatch]);
 
     const onChange = useCallback(
-        function (value: string, delta: Ace.Delta) {
+        (value: string, delta: Ace.Delta) => {
             setProgram(value);
             if (delta.action !== "insert") {
                 return;
@@ -222,9 +207,10 @@ export default function Editor() {
         [setProgram],
     );
 
-    const onSelectionChange = useCallback(function (selection: IAceSelection) {
-        setSelection(rangeToSpan(selection.getRange()));
-    }, []);
+    const onSelectionChange = useCallback(
+        (selection: IAceSelection) => setSelection(rangeToSpan(selection.getRange())),
+        [],
+    );
 
     return (
         <AceEditor

@@ -35,9 +35,7 @@ export const INITIAL_STATE: State = {
     hoveredSyntax: null,
     treeData: [],
     elements: new Map(),
-    gotoCursor: function () {
-        console.error("gotoCursor was called before it was set");
-    },
+    gotoCursor: () => console.error("gotoCursor was called before it was set"),
 };
 
 export function reducer(state: State, action: Action): State {
