@@ -65,13 +65,13 @@ export default function SyntaxTree() {
         (event: MouseEvent<HTMLElement>) => {
             const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
             if (node === undefined) return;
-            dispatch({ type: "setHoveredNode", hoveredNode: node });
+            dispatch({ type: "setHoveredNode", node });
         },
         [dispatch],
     );
 
     const onMouseLeaveLabel = useCallback(
-        () => dispatch({ type: "setHoveredNode", hoveredNode: null }),
+        () => dispatch({ type: "setHoveredNode", node: null }),
         [dispatch],
     );
 

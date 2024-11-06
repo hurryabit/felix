@@ -102,7 +102,7 @@ const substitutions: Map<string, string> = new Map([
 
 export default function Editor() {
     const self = useRef<AceEditor>(null);
-    const { program, problems, inspected, hoveredSyntax } = useAppState();
+    const { program, problems, inspected, hovered } = useAppState();
     const dispatch = useAppStateDispatch();
     const setProgram = useDebouncedCallback(
         (program: string) => dispatch({ type: "setProgram", program }),
@@ -112,8 +112,8 @@ export default function Editor() {
     const annotations = useMemo(() => problems.map(makeAnnotation), [problems]);
     const markers = useMemo(() => {
         const markers: IMarker[] = [];
-        if (hoveredSyntax !== null) {
-            markers.push(makeMarker(hoveredSyntax, classes.hoveredMarker));
+        if (hovered !== null) {
+            markers.push(makeMarker(hovered.syntax, classes.hoveredMarker));
         }
         if (selection !== null) {
             markers.push(makeMarker(selection, classes.selectionMarker));
@@ -123,7 +123,7 @@ export default function Editor() {
         }
         problems.forEach((problem) => markers.push(makeMarker(problem, classes.errorMarker)));
         return markers;
-    }, [problems, selection, inspected, hoveredSyntax]);
+    }, [problems, selection, inspected, hovered]);
 
     useEffect(() => {
         function gotoCursor(cursor: SrcLoc) {

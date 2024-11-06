@@ -9,13 +9,17 @@ export type Inspected = {
     path: string[];
 };
 
+export type Hovered = {
+    node: string;
+    syntax: Element;
+};
+
 export type State = {
     program: string;
     syntax: Element | undefined;
     problems: Problem[];
     inspected: Inspected | null;
-    hoveredNode: string | null;
-    hoveredSyntax: Element | null;
+    hovered: Hovered | null;
     treeData: TreeNodeData[];
     elements: Map<string, Element>;
     gotoCursor: GotoCursor;
@@ -25,7 +29,7 @@ export type Action =
     | { type: "setProgram"; program: string }
     | { type: "inspectNodeFromTree"; node: string | null }
     | { type: "inspectNodeFromEditor"; loc: SrcLoc }
-    | { type: "setHoveredNode"; hoveredNode: string | null }
+    | { type: "setHoveredNode"; node: string | null }
     | { type: "setGotoCursor"; gotoCursor: GotoCursor };
 
 export const INITIAL_STATE: State = {
@@ -33,8 +37,7 @@ export const INITIAL_STATE: State = {
     syntax: undefined,
     problems: [],
     inspected: null,
-    hoveredNode: null,
-    hoveredSyntax: null,
+    hovered: null,
     treeData: [],
     elements: new Map(),
     gotoCursor: () => console.error("gotoCursor was called before it was set"),
@@ -50,7 +53,7 @@ export function reducer(state: State, action: Action): State {
         case "inspectNodeFromEditor":
             return inspectNodeFromEditor(state, action.loc);
         case "setHoveredNode":
-            return setHoveredNode(state, action.hoveredNode);
+            return setHoveredNode(state, action.node);
         case "setGotoCursor":
             return { ...state, gotoCursor: action.gotoCursor };
     }
@@ -96,10 +99,12 @@ function inspectNodeFromEditor(state: State, loc: SrcLoc): State {
     return { ...state, inspected: { node, syntax, path } };
 }
 
-function setHoveredNode(state: State, hoveredNode: string | null): State {
-    if (hoveredNode === state.hoveredNode) return state;
-    const hoveredSyntax = hoveredNode !== null ? (state.elements.get(hoveredNode) ?? null) : null;
-    return { ...state, hoveredNode, hoveredSyntax };
+function setHoveredNode(state: State, node: string | null): State {
+    if (node === state.hovered?.node) return state;
+    if (node === null) return { ...state, hovered: null };
+    const syntax = state.elements.get(node);
+    if (syntax === undefined) return { ...state, hovered: null };
+    return { ...state, hovered: { node, syntax } };
 }
 
 function syntaxToData(root: Element): [TreeNodeData[], Map<string, Element>] {
