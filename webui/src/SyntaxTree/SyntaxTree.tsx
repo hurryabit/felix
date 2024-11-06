@@ -20,7 +20,7 @@ function easeInOutExpo(x: number): number {
 }
 
 export default function SyntaxTree() {
-    const { elements, inspectedNode, inspectedPath, treeData, gotoCursor } = useAppState();
+    const { elements, inspected, treeData, gotoCursor } = useAppState();
     const dispatch = useAppStateDispatch();
     const tree = useTree({ multiple: false, initialExpandedState: { "": true } });
     const { expand, toggleExpanded } = tree;
@@ -30,10 +30,10 @@ export default function SyntaxTree() {
     >({ duration: 200, easing: easeInOutExpo });
 
     useEffect(() => {
-        if (inspectedPath.length === 0) return;
-        inspectedPath.forEach(expand);
+        if (inspected === null || inspected.path.length === 0) return;
+        inspected.path.forEach(expand);
         setTimeout(() => scrollIntoView({ alignment: "center" }), 10);
-    }, [inspectedPath, expand, scrollIntoView]);
+    }, [inspected, expand, scrollIntoView]);
 
     const onClickChevron = useCallback(
         (event: MouseEvent<SVGSVGElement>) => {
@@ -48,7 +48,7 @@ export default function SyntaxTree() {
         (event: MouseEvent<HTMLElement>) => {
             const node = event.currentTarget.closest<HTMLElement>("[data-value]")?.dataset.value;
             if (node === undefined) return;
-            if (node === inspectedNode) {
+            if (node === inspected?.node) {
                 dispatch({ type: "inspectNodeFromTree", node: null });
             } else {
                 dispatch({ type: "inspectNodeFromTree", node });
@@ -58,7 +58,7 @@ export default function SyntaxTree() {
                 }
             }
         },
-        [elements, inspectedNode, dispatch, gotoCursor],
+        [elements, inspected, dispatch, gotoCursor],
     );
 
     const onMouseEnterLabel = useCallback(
@@ -107,8 +107,8 @@ export default function SyntaxTree() {
                             <Text
                                 component="span"
                                 className={classes.syntaxKind}
-                                data-selected={node.value === inspectedNode ? true : undefined}
-                                ref={node.value === inspectedNode ? targetRef : undefined}
+                                data-selected={node.value === inspected?.node ? true : undefined}
+                                ref={node.value === inspected?.node ? targetRef : undefined}
                                 onClick={onClickLabel}
                                 onMouseEnter={onMouseEnterLabel}
                                 onMouseLeave={onMouseLeaveLabel}

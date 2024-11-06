@@ -3,13 +3,17 @@ import type { TreeNodeData } from "@mantine/core";
 
 type GotoCursor = (cursor: SrcLoc) => void;
 
+export type Inspected = {
+    node: string;
+    syntax: Element;
+    path: string[];
+};
+
 export type State = {
     program: string;
     syntax: Element | undefined;
     problems: Problem[];
-    inspectedNode: string | null;
-    inspectedSyntax: Element | null;
-    inspectedPath: string[];
+    inspected: Inspected | null;
     hoveredNode: string | null;
     hoveredSyntax: Element | null;
     treeData: TreeNodeData[];
@@ -28,9 +32,7 @@ export const INITIAL_STATE: State = {
     program: "",
     syntax: undefined,
     problems: [],
-    inspectedNode: null,
-    inspectedSyntax: null,
-    inspectedPath: [],
+    inspected: null,
     hoveredNode: null,
     hoveredSyntax: null,
     treeData: [],
@@ -78,15 +80,11 @@ function setProgram(state: State, program: string): State {
 }
 
 function inspectNodeFromTree(state: State, node: string | null): State {
-    if (node === state.inspectedNode) return state;
-    let syntax: Element | null = null;
-    if (node !== null) {
-        syntax = state.elements.get(node) ?? null;
-        if (syntax === null) {
-            node = null;
-        }
-    }
-    return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: [] };
+    if (node === state.inspected?.node) return state;
+    if (node === null) return { ...state, inspected: null };
+    const syntax = state.elements.get(node);
+    if (syntax === undefined) return { ...state, inspected: null };
+    return { ...state, inspected: { node, syntax, path: [] } };
 }
 
 function inspectNodeFromEditor(state: State, loc: SrcLoc): State {
@@ -94,7 +92,8 @@ function inspectNodeFromEditor(state: State, loc: SrcLoc): State {
     const path: string[] = [];
     const syntax = findCursed(state.syntax, loc, path);
     const node = syntax.id;
-    return { ...state, inspectedNode: node, inspectedSyntax: syntax, inspectedPath: path };
+    if (node === state.inspected?.node) return state;
+    return { ...state, inspected: { node, syntax, path } };
 }
 
 function setHoveredNode(state: State, hoveredNode: string | null): State {
