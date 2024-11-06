@@ -79,7 +79,7 @@ function setProgram(state: State, program: string): State {
     const end = performance.now();
     console.debug(`Parsing took ${Math.ceil(end - start)} ms.`);
     const [treeData, elements] = syntaxToData(syntax);
-    return { ...state, program, syntax, problems, treeData, elements };
+    return { ...state, program, syntax, problems, treeData, elements, inspected: null };
 }
 
 function inspectNodeFromTree(state: State, node: string | null): State {

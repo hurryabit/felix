@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect } from "react";
+import { MouseEvent, useCallback, useEffect, useRef } from "react";
 import { IconAbc, IconChevronDown } from "@tabler/icons-react";
 import { Box, Group, ScrollArea, Text, Tree, useTree } from "@mantine/core";
 
@@ -24,6 +24,7 @@ export default function SyntaxTree() {
     const dispatch = useAppStateDispatch();
     const tree = useTree({ multiple: false, initialExpandedState: { "": true } });
     const { expand, toggleExpanded } = tree;
+    const treeRef = useRef<HTMLUListElement>(null);
     const { scrollableRef, targetRef, scrollIntoView } = useScrollIntoView<
         HTMLDivElement,
         HTMLDivElement
@@ -34,6 +35,16 @@ export default function SyntaxTree() {
         inspected.path.forEach(expand);
         setTimeout(() => scrollIntoView({ alignment: "center" }), 10);
     }, [inspected, expand, scrollIntoView]);
+
+    useEffect(() => {
+        setTimeout(() => {
+            const element = treeRef.current?.querySelector<HTMLElement>(
+                ".mantine-Tree-label:hover",
+            );
+            const node = element?.dataset.value ?? null;
+            dispatch({ type: "setHoveredNode", node });
+        }, 0);
+    }, [treeData, dispatch]);
 
     const onClickChevron = useCallback(
         (event: MouseEvent<SVGSVGElement>) => {
@@ -79,6 +90,7 @@ export default function SyntaxTree() {
         <ScrollArea type="scroll" h="100%" viewportRef={scrollableRef}>
             <Box pt="xs" pb="xs" pl="md" pr="md" className="ace-github-light-default">
                 <Tree
+                    ref={treeRef}
                     data={treeData}
                     tree={tree}
                     levelOffset={24}
