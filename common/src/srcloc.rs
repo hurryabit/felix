@@ -30,7 +30,7 @@ pub struct Mapper<'a> {
 
 impl<'a> Mapper<'a> {
     pub fn new(input: &'a str) -> Self {
-        if input.len() == 0 {
+        if input.is_empty() {
             // NOTE(MH): Handling the empty input special removes an edge case
             // from `Self::src_loc`.
             return Self {

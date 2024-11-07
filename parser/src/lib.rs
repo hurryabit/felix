@@ -1,7 +1,7 @@
 mod ast;
+mod combinators;
 mod first;
 mod parser;
-mod combinators;
 pub mod rules;
 pub mod syntax;
 

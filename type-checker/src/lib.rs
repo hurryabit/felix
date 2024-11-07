@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-mod checker;
 mod ast;
+mod checker;
 pub mod stlc;
 mod r#type;
 

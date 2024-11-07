@@ -4,7 +4,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use felix_common::Problem;
 use felix_parser::Parser;
-use felix_type_checker;
 
 pub mod syntax;
 

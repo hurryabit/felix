@@ -36,8 +36,9 @@ pub type Node = rowan::SyntaxNode<super::lang::FelixLang>;
 impl NodeKind {
     pub const LAST: Self = Self::VARIANTS[Self::VARIANTS.len() - 1];
 
-    pub const EXPR: NodeKindSet =
-        enum_set!(Self::EXPR_ABS | Self::EXPR_APP | Self::EXPR_LET | Self::EXPR_ATOM | Self::EXPR_META);
+    pub const EXPR: NodeKindSet = enum_set!(
+        Self::EXPR_ABS | Self::EXPR_APP | Self::EXPR_LET | Self::EXPR_ATOM | Self::EXPR_META
+    );
     pub const EXPR_ATOM: NodeKindSet =
         enum_set!(Self::EXPR_PAREN | Self::EXPR_VAR | Self::EXPR_UNIT);
 

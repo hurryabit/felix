@@ -31,7 +31,6 @@ impl TryFrom<u16> for SyntaxKind {
             node::NodeKind::try_from(repr).map(SyntaxKind::Node)
         } else {
             token::TokenKind::try_from(repr & !0x0100).map(SyntaxKind::Token)
-
         }
     }
 }

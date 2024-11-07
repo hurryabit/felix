@@ -18,6 +18,7 @@ enum ContextData {
 pub struct Context(Rc<ContextData>);
 
 impl Context {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(Rc::new(ContextData::Empty))
     }
@@ -69,6 +70,7 @@ pub trait Checker {
 
 struct InferRule {
     name: &'static str,
+    #[allow(clippy::type_complexity)]
     rule: Box<dyn Fn(&dyn Checker, &Context, &Expr) -> Option<Result<Type>> + Send + Sync>,
 }
 
@@ -110,7 +112,7 @@ impl TypeSystem {
 
 impl Checker for TypeSystem {
     fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type> {
-        if let Some(r#type) = ctx.lookup(&evar) {
+        if let Some(r#type) = ctx.lookup(evar) {
             Ok(r#type)
         } else {
             Err(TypeError::UnknownEVar(evar.clone()))

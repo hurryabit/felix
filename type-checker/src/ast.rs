@@ -92,7 +92,7 @@ impl HasAnnot for T {
 impl<const B: bool, T: FromExpr + HasAnnot> FromExpr for Annot<B, T> {
     fn from_expr(expr: &Expr) -> Option<Rc<Self>> {
         let inner = T::from_expr(expr)?;
-        let annot = inner.annot().as_ref().map(Type::clone);
+        let annot = inner.annot().clone();
         if annot.is_some() == B {
             Some(Rc::new(Annot { inner, annot }))
         } else {
