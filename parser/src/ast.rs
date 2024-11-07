@@ -13,10 +13,15 @@ impl GreenChild {
     }
 }
 
-pub fn expr_abs(binder: GreenChild, expr: GreenChild) -> GreenChild {
+pub fn expr_abs(binder: GreenChild, body: GreenChild) -> GreenChild {
     node(
         EXPR_ABS,
-        vec![token(GR_LAMBDA_LOWER, "λ"), binder, token(DOT, "."), expr],
+        vec![
+            token(GR_LAMBDA_LOWER, "λ"),
+            binder,
+            token(DOT, "."),
+            scope(body),
+        ],
     )
 }
 
@@ -33,7 +38,7 @@ pub fn expr_let(binder: GreenChild, bindee: GreenChild, body: GreenChild) -> Gre
             token(EQUALS, "="),
             bindee,
             token(KW_IN, "in"),
-            body,
+            scope(body),
         ],
     )
 }
@@ -92,6 +97,10 @@ fn name(text: &str) -> GreenChild {
     node(NAME, vec![token(ID_EXPR, text)])
 }
 
+fn scope(body: GreenChild) -> GreenChild {
+    node(SCOPE, vec![body])
+}
+
 fn token(kind: TokenKind, text: &str) -> GreenChild {
     GreenChild(rowan::NodeOrToken::Token(rowan::GreenToken::new(
         kind.into(),
@@ -133,8 +142,9 @@ mod tests {
             TYPE_META@4..5
               ID_TYPE@4..5 "T"
           DOT@5..6 "."
-          EXPR_META@6..7
-            ID_EXPR@6..7 "e"
+          SCOPE@6..7
+            EXPR_META@6..7
+              ID_EXPR@6..7 "e"
         "#);
     }
 
@@ -148,8 +158,9 @@ mod tests {
             NAME@2..3
               ID_EXPR@2..3 "x"
           DOT@3..4 "."
-          EXPR_META@4..5
-            ID_EXPR@4..5 "e"
+          SCOPE@4..5
+            EXPR_META@4..5
+              ID_EXPR@4..5 "e"
         "#);
     }
 
@@ -186,8 +197,9 @@ mod tests {
           EXPR_META@7..9
             ID_EXPR@7..9 "e1"
           KW_IN@9..11 "in"
-          EXPR_META@11..13
-            ID_EXPR@11..13 "e2"
+          SCOPE@11..13
+            EXPR_META@11..13
+              ID_EXPR@11..13 "e2"
         "#);
     }
 
@@ -204,8 +216,9 @@ mod tests {
           EXPR_META@5..7
             ID_EXPR@5..7 "e1"
           KW_IN@7..9 "in"
-          EXPR_META@9..11
-            ID_EXPR@9..11 "e2"
+          SCOPE@9..11
+            EXPR_META@9..11
+              ID_EXPR@9..11 "e2"
         "#);
     }
 

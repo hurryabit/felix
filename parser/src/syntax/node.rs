@@ -18,6 +18,7 @@ pub enum NodeKind {
 
     BINDER,
     NAME,
+    SCOPE,
 
     TYPE_ARROW,
     TYPE_PAREN,

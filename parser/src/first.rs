@@ -25,6 +25,7 @@ impl First for NodeKind {
             EXPR_META => TokenKindSet::empty(),
             BINDER => NAME.first(),
             NAME => TokenKind::ID_EXPR.into(),
+            SCOPE => NodeKind::EXPR.first(),
             TYPE_ARROW => NodeKind::TYPE_ATOM.first(),
             TYPE_PAREN => TokenKind::LPAREN.into(),
             TYPE_VAR => TokenKind::ID_TYPE.into(),

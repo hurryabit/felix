@@ -17,9 +17,9 @@ for the terminal `"("`. In productions of the form
 PROGRAM = <EXPR>
 
 EXPR = EXPR_ABS | EXPR_APP | EXPR_LET
-EXPR_ABS = <"λ" BINDER "." EXPR>
+EXPR_ABS = <"λ" BINDER "." SCOPE>
 EXPR_APP = <EXPR_APP EXPR_ATOM> | EXPR_ATOM
-EXPR_LET = <"let" BINDER "=" EXPR "in" EXPR>
+EXPR_LET = <"let" BINDER "=" EXPR "in" SCOPE>
 EXPR_ATOM = EXPR_PAREN | EXPR_VAR | EXPR_UNIT
 EXPR_PAREN = <"(" EXPR ")">
 EXPR_VAR = <ID_EXPR>
@@ -34,6 +34,7 @@ TYPE_UNIT = <"Unit">
 
 BINDER = <NAME [":" TYPE]>
 NAME = <ID_EXPR>
+SCOPE = <EXPR>
 
 (* The following rules are tokens defined by regular expressions: *)
 ID_EXPR = r"_*[a-z][A-Za-z0-9_]*"

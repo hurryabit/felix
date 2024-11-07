@@ -29,6 +29,7 @@ impl<'a> Parser<'a> {
         parser.expect_advance(GR_LAMBDA_LOWER)?;
         parser.binder(DOT.into())?;
         parser.expect_advance(DOT)?;
+        let mut parser = parser.with_node(SCOPE);
         parser.expr(follow)
     }
 
@@ -39,6 +40,7 @@ impl<'a> Parser<'a> {
         parser.expect_advance(EQUALS)?;
         parser.expr(KW_IN.into())?;
         parser.expect_advance(KW_IN)?;
+        let mut parser = parser.with_node(SCOPE);
         parser.expr(follow)
     }
 
