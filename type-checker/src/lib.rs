@@ -2,7 +2,7 @@
 mod checker;
 mod ast;
 pub mod stlc;
-mod typ;
+mod r#type;
 
 pub use checker::{Checker, Context, Result, TypeError, TypeSystem};
-pub use typ::Type;
+pub use r#type::Type;

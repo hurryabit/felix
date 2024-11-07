@@ -15,7 +15,7 @@ fn t_abs(checker: &dyn Checker, ctx: &Context, abs: &Rc<Annot<true, Abs>>) -> Re
     let t_binder = abs.annot();
     let ctx = ctx.extend(abs.inner.binder.name.clone(), t_binder.clone());
     let t_res = checker.infer(&ctx, &abs.inner.body)?;
-    Ok(typ::arrow(t_binder.clone(), t_res))
+    Ok(r#type::arrow(t_binder.clone(), t_res))
 }
 
 fn t_app(checker: &dyn Checker, ctx: &Context, app: &Rc<App>) -> Result<Type> {
@@ -34,7 +34,7 @@ fn t_let(checker: &dyn Checker, ctx: &Context, let_: &Rc<Annot<false, Let>>) -> 
 }
 
 fn t_unit(_checker: &dyn Checker, _ctx: &Context, _unit: &Rc<Unit>) -> Result<Type> {
-    Ok(typ::UNIT)
+    Ok(r#type::UNIT)
 }
 
 fn make() -> TypeSystem {
@@ -60,7 +60,7 @@ mod tests {
 
     use super::*;
     // use as::*;
-    use typ::*;
+    use r#type::*;
 
     impl std::ops::Shr<Type> for Type {
         type Output = Type;
@@ -99,13 +99,19 @@ mod tests {
 
     #[test]
     fn t_abs_type_propagates() {
-        let res = stlc::make().infer(&Context::new(), &abs(binder_annot("x", tvar("T")), var("x")));
+        let res = stlc::make().infer(
+            &Context::new(),
+            &abs(binder_annot("x", tvar("T")), var("x")),
+        );
         assert_eq!(res.unwrap(), tvar("T") >> tvar("T"));
     }
 
     #[test]
     fn t_abs_error_propagates() {
-        let res = stlc::make().infer(&Context::new(), &abs(binder_annot("x", tvar("T")), broken()));
+        let res = stlc::make().infer(
+            &Context::new(),
+            &abs(binder_annot("x", tvar("T")), broken()),
+        );
         assert_matches!(res, Err(TypeError::BrokenNode(_)));
     }
 
@@ -120,7 +126,7 @@ mod tests {
         let ctx = Context::new()
             .extend(ident("F"), tvar("S") >> tvar("T"))
             .extend(ident("A"), tvar("S"));
-        let res = stlc::make().infer(&ctx,&app(var("F"), var("A")));
+        let res = stlc::make().infer(&ctx, &app(var("F"), var("A")));
         assert_eq!(res.unwrap(), tvar("T"));
     }
 
@@ -196,7 +202,10 @@ mod tests {
     #[test]
     fn t_let_annot() {
         let ctx = Context::new();
-        let res = stlc::make().infer(&ctx, &let_(binder_annot("x", tvar("T")), var("A"), var("B")));
+        let res = stlc::make().infer(
+            &ctx,
+            &let_(binder_annot("x", tvar("T")), var("A"), var("B")),
+        );
         assert_matches!(res, Err(TypeError::NoInferRule(_)));
     }
 

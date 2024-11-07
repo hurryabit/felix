@@ -111,9 +111,9 @@ pub fn binder(name: &str) -> Binder {
     Binder { name, annot }
 }
 
-pub fn binder_annot(name: &str, typ: Type) -> Binder {
+pub fn binder_annot(name: &str, r#type: Type) -> Binder {
     let name = ident(name);
-    let annot = Some(typ);
+    let annot = Some(r#type);
     Binder { name, annot }
 }
 

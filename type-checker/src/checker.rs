@@ -9,7 +9,7 @@ enum ContextData {
     Empty,
     Binding {
         ident: Ident,
-        typ: Type,
+        r#type: Type,
         next: Context,
     },
 }
@@ -27,11 +27,11 @@ impl Context {
             ContextData::Empty => None,
             ContextData::Binding {
                 ident: bound,
-                typ,
+                r#type,
                 next,
             } => {
                 if ident == bound {
-                    Some(typ.clone())
+                    Some(r#type.clone())
                 } else {
                     next.lookup(ident)
                 }
@@ -39,10 +39,10 @@ impl Context {
         }
     }
 
-    pub fn extend(&self, ident: Ident, typ: Type) -> Self {
+    pub fn extend(&self, ident: Ident, r#type: Type) -> Self {
         Self(Rc::new(ContextData::Binding {
             ident,
-            typ,
+            r#type,
             next: self.clone(),
         }))
     }
@@ -61,19 +61,15 @@ pub type Result<T> = std::result::Result<T, TypeError>;
 
 pub trait Checker {
     fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type>;
-    fn check(&self, ctx: &Context, expr: &Expr, typ: Type) -> Result<()>;
+    fn check(&self, ctx: &Context, expr: &Expr, r#type: Type) -> Result<()>;
     fn infer(&self, ctx: &Context, expr: &Expr) -> Result<Type>;
     fn equal(&self, found: &Type, expected: &Type) -> Result<()>;
-    fn decompose_arrow(&self, typ: &Type) -> Result<(Type, Type)>;
+    fn decompose_arrow(&self, r#type: &Type) -> Result<(Type, Type)>;
 }
 
 struct InferRule {
     name: &'static str,
-    rule: Box<
-        dyn Fn(&dyn Checker, &Context, &Expr) -> Option<Result<Type>>
-            + Send
-            + Sync,
-    >,
+    rule: Box<dyn Fn(&dyn Checker, &Context, &Expr) -> Option<Result<Type>> + Send + Sync>,
 }
 
 impl InferRule {
@@ -83,11 +79,9 @@ impl InferRule {
     ) -> Self {
         Self {
             name,
-            rule: Box::new(
-                move |checker: &dyn Checker, ctx: &Context, expr: &Expr| {
-                    T::from_expr(expr).map(|pattern| rule(checker, ctx, pattern.borrow()))
-                },
-            ),
+            rule: Box::new(move |checker: &dyn Checker, ctx: &Context, expr: &Expr| {
+                T::from_expr(expr).map(|pattern| rule(checker, ctx, pattern.borrow()))
+            }),
         }
     }
 }
@@ -116,15 +110,15 @@ impl TypeSystem {
 
 impl Checker for TypeSystem {
     fn lookup(&self, ctx: &Context, evar: &Ident) -> Result<Type> {
-        if let Some(typ) = ctx.lookup(&evar) {
-            Ok(typ)
+        if let Some(r#type) = ctx.lookup(&evar) {
+            Ok(r#type)
         } else {
             Err(TypeError::UnknownEVar(evar.clone()))
         }
     }
 
     #[allow(unused_variables)]
-    fn check(&self, ctx: &Context, expr: &Expr, typ: Type) -> Result<()> {
+    fn check(&self, ctx: &Context, expr: &Expr, r#type: Type) -> Result<()> {
         todo!()
     }
 
@@ -153,10 +147,12 @@ impl Checker for TypeSystem {
         }
     }
 
-    fn decompose_arrow(&self, typ: &Type) -> Result<(Type, Type)> {
-        match typ {
+    fn decompose_arrow(&self, r#type: &Type) -> Result<(Type, Type)> {
+        match r#type {
             Type::Arrow(param, res) => Ok((param.as_ref().clone(), res.as_ref().clone())),
-            _ => Err(TypeError::ExpectedArrow { found: typ.clone() }),
+            _ => Err(TypeError::ExpectedArrow {
+                found: r#type.clone(),
+            }),
         }
     }
 }
