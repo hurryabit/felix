@@ -11,6 +11,24 @@ pub enum SyntaxKind {
     Token(token::TokenKind),
 }
 
+impl SyntaxKind {
+    pub fn into_node(self) -> node::NodeKind {
+        if let Self::Node(kind) = self {
+            kind
+        } else {
+            panic!("SyntaxKind::into_node({:?}) is not defined", self)
+        }
+    }
+
+    pub fn into_token(self) -> token::TokenKind {
+        if let Self::Token(kind) = self {
+            kind
+        } else {
+            panic!("SyntaxKind::into_node({:?}) is not defined", self)
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FelixLang {}
 

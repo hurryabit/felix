@@ -13,6 +13,7 @@ license.workspace = true
 assert_matches.workspace = true
 enumset = "1.1.5"
 felix-common = { path = "../common" }
+indexmap.workspace = true
 logos = "0.14.2"
 rowan.workspace = true
 strum = { version = "0.26.3", features = ["derive"] }

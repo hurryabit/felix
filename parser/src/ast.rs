@@ -1,9 +1,77 @@
 #![allow(dead_code)]
+use rowan::ast::AstNode;
+
 use crate::syntax::{
-    Node,
+    FelixLang, Node,
     NodeKind::{self, *},
+    SyntaxKind, Token,
     TokenKind::{self, *},
 };
+
+macro_rules! ast_node {
+    ($name:ident, $kind:expr) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            syntax: Node,
+        }
+
+        impl AstNode for $name {
+            type Language = FelixLang;
+
+            fn can_cast(kind: SyntaxKind) -> bool {
+                kind == SyntaxKind::Node($kind)
+            }
+
+            fn cast(node: Node) -> Option<Self> {
+                if Self::can_cast(node.kind()) {
+                    Some(Self { syntax: node })
+                } else {
+                    None
+                }
+            }
+
+            fn syntax(&self) -> &Node {
+                &self.syntax
+            }
+        }
+    };
+}
+
+ast_node!(ExprVar, NodeKind::EXPR_VAR);
+
+ast_node!(Name, NodeKind::NAME);
+ast_node!(Binder, NodeKind::BINDER);
+ast_node!(Scope, NodeKind::SCOPE);
+
+impl ExprVar {
+    pub fn id_expr(&self) -> Option<Token> {
+        self.syntax
+            .first_token()
+            // TODO(MH): We need to make this syntactically more convenient.
+            .filter(|t| t.kind() == SyntaxKind::Token(TokenKind::ID_EXPR))
+    }
+}
+
+impl Name {
+    pub fn id_expr(&self) -> Option<Token> {
+        self.syntax
+            .first_token()
+            // TODO(MH): We need to make this syntactically more convenient.
+            .filter(|t| t.kind() == SyntaxKind::Token(TokenKind::ID_EXPR))
+    }
+}
+
+impl Binder {
+    pub fn name(&self) -> Option<Name> {
+        self.syntax.children().find_map(Name::cast)
+    }
+}
+
+impl Scope {
+    pub fn binder(&self) -> Option<Binder> {
+        self.syntax.parent()?.first_child().and_then(Binder::cast)
+    }
+}
 
 pub struct GreenChild(rowan::NodeOrToken<rowan::GreenNode, rowan::GreenToken>);
 

@@ -1,6 +1,8 @@
 use enumset::enum_set;
 use strum::VariantArray;
 
+use super::lang::FelixLang;
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, Hash, PartialOrd, Ord, enumset::EnumSetType, strum::Display, VariantArray)]
 #[repr(u16)]
@@ -31,7 +33,9 @@ pub enum NodeKind {
 
 pub type NodeKindSet = enumset::EnumSet<NodeKind>;
 
-pub type Node = rowan::SyntaxNode<super::lang::FelixLang>;
+pub type Node = rowan::SyntaxNode<FelixLang>;
+
+pub type NodePtr = rowan::ast::SyntaxNodePtr<FelixLang>;
 
 impl NodeKind {
     pub const LAST: Self = Self::VARIANTS[Self::VARIANTS.len() - 1];
