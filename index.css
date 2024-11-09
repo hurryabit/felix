@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root {
+    --main-bg-color: white;
+    --main-fg-color: black;
+    --accent-bg-color: dodgerblue;
+    --accent-fg-color: white;
+    --border-color: silver;
+}
+
+* {
+    font-family: "Fira Sans", sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.code {
+    font-family: "Fira Code", monospace;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    width: 100dvw;
+}
+
+header,
+footer {
+    background-color: var(--accent-bg-color);
+    color: var(--accent-fg-color);
+    width: 100%;
+}
+
+header {
+    flex: 0 0 4rem;
+}
+
+footer {
+    flex: 0 0 2rem;
+}
+
+#navmain {
+    background-color: var(--main-bg-color);
+    display: flex;
+    flex-direction: row;
+    flex: 1 0 0;
+    width: 100%;
+}
+
+nav {
+    border-right: 1px solid var(--border-color);
+}
+
+nav {
+    flex: 1 1 12rem;
+}
+
+main {
+    display: flex;
+    flex-direction: row;
+    flex: 3 3 36rem;
+}
+
+main > div {
+    flex: 1 1 0;
+}
+
+footer :is(a, a:hover) {
+    color: inherit;
+}
+
+a:hover {
+    cursor: pointer;
+}
+
+#input {
+    background-color: aqua;
+}
+
+#output {
+    background-color: deeppink;
+    min-width: 100px;
+}
