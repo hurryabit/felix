@@ -1,15 +1,25 @@
 {
-  "name": "felix",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "typescript": "~5.6.2",
-    "vite": "^5.4.10"
-  }
+    "name": "felix",
+    "version": "0.0.1",
+    "author": "Martin Huschenbett <martin.huschenbett@posteo.me>",
+    "homepage": "https://hurryabit.github.io/felix",
+    "license": "Apache 2.0",
+    "repository": "github:hurryabit/felix",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "prettier": "prettier --check \"**/*.{ts,tsx}\"",
+        "prettier:write": "prettier --write \"**/*.{ts,tsx}\"",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "@ianvs/prettier-plugin-sort-imports": "^4.4.0",
+        "prettier": "^3.3.3",
+        "typescript": "~5.6.2",
+        "vite": "^5.4.10",
+        "vitest": "^2.1.4"
+    },
+    "packageManager": "pnpm@9.12.3"
 }
