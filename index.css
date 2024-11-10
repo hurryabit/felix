@@ -83,6 +83,14 @@
     /* font-variant-ligatures: none; */
 }
 
+.silver {
+    color: silver;
+}
+
+.gold {
+    color: gold;
+}
+
 /* Specific elements */
 
 body {
