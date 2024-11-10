@@ -8,20 +8,17 @@ in
 twice (λu:Unit. u) unit
 `;
 
-type TokenKindInfo = { regexp: RegExp; tag: Tag | null };
+type TokenKindInfo = { regexp: RegExp; tag: Tag };
 
-// NOTE(MH): We don't add a type annotation such that we can use the inferred
-// key type further down. We then narrow the type explicitly using this inferred
-// type.
+// We don't add a type annotation such that we can use the inferred key type
+// further down. We then simplify the type explicitly using this inferred type.
 const TOKEN_KINDS0 = {
-    WHITESPACE: { regexp: /\s+/, tag: null },
-
     KW_IN: { regexp: /in\b/, tag: tags.definitionKeyword },
     KW_LET: { regexp: /let\b/, tag: tags.definitionKeyword },
 
     GR_LAM_LOW: { regexp: /λ/, tag: tags.keyword },
 
-    TY_UNIT: { regexp: /Unit\b/, tag: tags.typeName },
+    TY_UNIT: { regexp: /Unit\b/, tag: tags.standard(tags.typeName) },
 
     LIT_UNIT: { regexp: /unit\b/, tag: tags.atom },
     LIT_NAT: { regexp: /(?:0|[1-9][0-9]*)\b/, tag: tags.integer },
@@ -48,24 +45,35 @@ type TokenKind = keyof typeof TOKEN_KINDS0;
 
 const TOKEN_KINDS: Record<TokenKind, TokenKindInfo> = TOKEN_KINDS0;
 
+function makeTokenTable(info: Record<TokenKind, TokenKindInfo>): Record<string, Tag> {
+    const res = {} as Record<string, Tag>;
+    for (const [kind, { tag }] of Object.entries(info)) {
+        res[kind] = tag;
+    }
+    return res;
+}
+
 type State = null;
 
 const lambdaParser: StreamParser<State> = {
     startState: () => null,
     token: (stream: StringStream, _: State): string | null => {
+        // Whitespace gets special treatment because we need to return null.
+        if (stream.eatSpace()) return null;
+        console.debug(`token(${stream.string.slice(stream.start, stream.start + 10)}...)`);
         // FIXME(MH): Linear search is ridiculuous but unfortunately JS' RegExp
         // class does not allow for the same simple approach as Python:
         // https://docs.python.org/3/library/re.html#writing-a-tokenizer. Let's
         // improve this once we have more pieces in place.
-        for (const kind in TOKEN_KINDS) {
-            const { regexp, tag } = TOKEN_KINDS[kind as TokenKind];
+        for (const [kind, { regexp }] of Object.entries(TOKEN_KINDS)) {
             // TODO(MH): Codemirror's typing of StringStream.match could benefit
             // from some improvement. Let's contribute this.
             const match = stream.match(regexp) as RegExpMatchArray | null;
-            if (match != null) return tag?.toString() ?? null;
+            if (match != null) return kind;
         }
         throw new Error("Lambda tokenizer fell through the floor! 😢");
     },
+    tokenTable: makeTokenTable(TOKEN_KINDS),
 };
 const lambdaLanguage = StreamLanguage.define(lambdaParser);
 
