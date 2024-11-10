@@ -76,4 +76,15 @@ describe("tokenizer", () => {
           ]
         `);
     });
+
+    test("unknown", () => {
+        expect(tokenizer("Hello 🐑!")).toMatchInlineSnapshot(`
+          [
+            "ID_TYPE@0..5 :: Hello",
+            "WHITESPACE@5..6 :: %20",
+            "UNKNOWN@6..8 :: 🐑",
+            "UNKNOWN@8..9 :: !",
+          ]
+        `);
+    });
 });

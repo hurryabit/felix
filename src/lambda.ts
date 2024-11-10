@@ -38,7 +38,7 @@ const TOKEN_KINDS0 = {
     RPAREN: { regexp: /\)/, tag: tags.paren },
 
     COMMENT: { regexp: /#.*$/m, tag: tags.comment },
-    UNKNOWN: { regexp: /./, tag: tags.invalid },
+    UNKNOWN: { regexp: /./u, tag: tags.invalid },
 };
 
 type TokenKind = keyof typeof TOKEN_KINDS0;
