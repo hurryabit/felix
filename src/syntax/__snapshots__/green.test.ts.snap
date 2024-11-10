@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GreenNodeBuilder > simple > 
+          EXPR_VAR
+              ID_EXPR :: text
+         1`] = `
+"
+EXPR_VAR
+    ID_EXPR :: text
+"
+`;
