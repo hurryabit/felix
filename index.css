@@ -6,6 +6,9 @@
     --accent-bg-color: dodgerblue;
     --accent-fg-color: white;
     --border-color: silver;
+    --header-height: 4rem;
+    --footer-height: 2rem;
+    --main-height: calc(100dvh - 6rem);
     font-family: "Fira Sans", sans-serif;
 }
 
@@ -50,6 +53,7 @@ footer {
     display: flex;
     flex-direction: row;
     flex: 1 0 0;
+    height: 100%;
     width: 100%;
 }
 
@@ -61,6 +65,7 @@ main {
     display: flex;
     flex-direction: row;
     flex: 3 3 36rem;
+    height: 100%;
 }
 
 main > div {
@@ -78,6 +83,8 @@ a:hover {
 #editor-container {
     height: 100%;
     outline: solid 1px var(--border-color);
+    overflow: scroll;
+    z-index: 10;
 }
 
 .cm-editor {
@@ -87,4 +94,8 @@ a:hover {
 #output {
     background-color: deeppink;
     min-width: 100px;
+}
+
+.container {
+    contain: size layout;
 }
